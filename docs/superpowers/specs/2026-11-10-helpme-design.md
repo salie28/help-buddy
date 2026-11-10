@@ -150,7 +150,7 @@ All of it is undone by `helpme --uninstall`, which leaves the screenshots alone.
   - the Markdown converter (including escaping `<`, `&`)
 - **Real run:**
   - press the key with the window on another desktop and check that focus doesn't move
-  - check that the card fills and the PNG exists
+  - check that the answer fills in and the PNG exists
   - check that preset-area mode crops correctly
   - force an error (bad model name) and check the retry and log behaviour
 
