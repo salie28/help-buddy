@@ -28,15 +28,23 @@ class Request:
 
 
 def _from_dict(d) -> Request | None:
+    """A stored entry, or None if a required field is missing or the wrong type.
+    Optional fields (answer, error, attempts) fall back to their defaults."""
     if not isinstance(d, dict):
         return None
-    try:
-        r = Request(**{f.name: d[f.name] for f in dataclasses.fields(Request)})
-    except (KeyError, TypeError):
+    for key in ("id", "created", "image", "mode", "status"):
+        if not isinstance(d.get(key), str):
+            return None
+    if d["status"] not in STATUSES or d["mode"] not in ("full", "area"):
         return None
-    if r.status not in STATUSES or not isinstance(r.id, str):
-        return None
-    return r
+    attempts = d.get("attempts")
+    if not isinstance(attempts, int) or isinstance(attempts, bool) or attempts < 0:
+        attempts = 0
+    return Request(id=d["id"], created=d["created"], image=d["image"], mode=d["mode"],
+                   status=d["status"],
+                   answer=d["answer"] if isinstance(d.get("answer"), str) else "",
+                   error=d["error"] if isinstance(d.get("error"), str) else "",
+                   attempts=attempts)
 
 
 class History:

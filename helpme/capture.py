@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import shutil
 import threading
 from collections import deque
@@ -94,6 +95,9 @@ class Capturer:
                 path, error = _grab_screencast_frame(n), None
             except CaptureError as e:
                 path, error = None, str(e)
+            except Exception as e:  # never leave the queue waiting for a callback
+                log.exception("unexpected screen-share capture error")
+                path, error = None, f"Capture failed: {getattr(e, 'message', None) or e}"
             GLib.idle_add(lambda: (done(path, error), GLib.SOURCE_REMOVE)[1])
         threading.Thread(target=work, daemon=True).start()
 
@@ -102,8 +106,12 @@ class Capturer:
             self._busy = False
             if error:
                 log.error("capture failed: %s", error)
-            cb(value, error)
-            self._next()
+            try:
+                cb(value, error)
+            except Exception:
+                log.exception("capture callback failed")
+            finally:
+                self._next()
             return GLib.SOURCE_REMOVE
         GLib.idle_add(run)
 
@@ -125,9 +133,10 @@ class Capturer:
             else:
                 shutil.move(portal_path, dest)
             self._finish(cb, dest, None)
-        except (OSError, GLib.Error) as e:
+        except Exception as e:  # always answer, or the queue stays busy forever
             _remove(portal_path)
-            self._finish(cb, None, f"Could not save screenshot: {e}")
+            self._finish(cb, None,
+                         f"Could not save screenshot: {getattr(e, 'message', None) or e}")
 
     def _shoot(self, done) -> None:
         """Ask the portal for a screenshot; done(path | None, error | None)."""
@@ -287,17 +296,19 @@ def _grab_screencast_frame(n: int) -> str:
 
 
 def _grab_frame(fd: int, node: int, out: str) -> None:
-    if not Gst.is_initialized():
-        Gst.init(None)
-    pipe = Gst.parse_launch(
-        f"pipewiresrc fd={fd} path={node} always-copy=true num-buffers=1 "
-        f"! videoconvert ! pngenc ! filesink location={out}")
+    pipe = None
     try:
+        if not Gst.is_initialized():
+            Gst.init(None)
+        pipe = Gst.parse_launch(
+            f"pipewiresrc fd={fd} path={node} always-copy=true num-buffers=1 "
+            f"! videoconvert ! pngenc ! filesink location={out}")
         pipe.set_state(Gst.State.PLAYING)
         msg = pipe.get_bus().timed_pop_filtered(
             10 * Gst.SECOND, Gst.MessageType.EOS | Gst.MessageType.ERROR)
     finally:
-        pipe.set_state(Gst.State.NULL)
+        if pipe is not None:
+            pipe.set_state(Gst.State.NULL)
         os.close(fd)
     if msg is None:
         _remove(out)
@@ -309,9 +320,39 @@ def _grab_frame(fd: int, node: int, out: str) -> None:
         raise CaptureError("Frame grab produced no image")
 
 
+_APP_UNIT = re.compile(r"^app-[^-]+-(.+?)(?:-\d+|-autostart|@[^.]*)\.(?:scope|service)$")
+_APP_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$")
+
+
+def portal_app_id(cgroup_text: str) -> str:
+    """The app id the portal derives from our systemd scope ('' = plain host app).
+    GNOME starts us as app-gnome-<id>-<pid>.scope from the app grid, but as an
+    invalid-id scope from the shortcut, so the two get separate screen-share grants."""
+    for line in cgroup_text.splitlines():
+        unit = line.rsplit("/", 1)[-1]
+        m = _APP_UNIT.match(unit)
+        if m:
+            app_id = m.group(1).replace("\\x2d", "-")
+            return app_id if _APP_ID.match(app_id) else ""
+    return ""
+
+
+def current_app_id() -> str:
+    try:
+        with open("/proc/self/cgroup", encoding="utf-8") as f:
+            return portal_app_id(f.read())
+    except OSError:
+        return ""
+
+
+def token_path(app_id: str) -> str:
+    base = config.screencast_token_path()
+    return f"{base}.{app_id}" if app_id else base
+
+
 def _read_token() -> str:
     try:
-        with open(config.screencast_token_path(), encoding="utf-8") as f:
+        with open(token_path(current_app_id()), encoding="utf-8") as f:
             return f.read().strip()
     except OSError:
         return ""
@@ -319,11 +360,12 @@ def _read_token() -> str:
 
 def _write_token(token: str) -> None:
     os.makedirs(config.state_dir(), exist_ok=True)
-    tmp = config.screencast_token_path() + ".tmp"
+    path = token_path(current_app_id())
+    tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         f.write(token)
     os.chmod(tmp, 0o600)
-    os.replace(tmp, config.screencast_token_path())
+    os.replace(tmp, path)
 
 
 def _remove(path) -> None:

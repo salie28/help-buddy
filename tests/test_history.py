@@ -102,3 +102,25 @@ class CleanupTest(XdgTestCase):
 
     def test_cleanup_missing_dir(self):
         self.assertEqual(cleanup_screenshots(os.path.join(self.root, "nope"), 30, time.time()), [])
+
+
+class HistoryTypesTest(XdgTestCase):
+    def test_entry_with_wrong_types(self):
+        os.makedirs(os.path.dirname(config.history_path()), exist_ok=True)
+        base = {"id": "a" * 32, "created": "2026-11-10T12:00:00", "image": "/x.png",
+                "mode": "full", "status": "done", "answer": "x", "error": "", "attempts": 1}
+        entries = [
+            dict(base, id="1" * 32, answer=None, error=None, attempts="x"),  # optional: defaulted
+            dict(base, id="2" * 32, created=5),                            # required: skipped
+            dict(base, id="3" * 32, image=5),                              # required: skipped
+            dict(base, id="4" * 32, mode="weird"),                         # required: skipped
+            dict(base, id="5" * 32, attempts=True),                        # bool is not a count
+        ]
+        with open(config.history_path(), "w") as f:
+            json.dump(entries, f)
+        h = History()
+        h.load()
+        self.assertEqual(sorted(r.id for r in h.all()), ["1" * 32, "5" * 32])
+        r1 = h.get("1" * 32)
+        self.assertEqual((r1.answer, r1.error, r1.attempts), ("", "", 0))
+        self.assertEqual(h.get("5" * 32).attempts, 0)
