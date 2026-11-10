@@ -45,3 +45,27 @@ class CommandTest(XdgTestCase):
         set_autostart(False)
         self.assertFalse(os.path.exists(autostart_path()))
         set_autostart(False)  # no error when already gone
+
+
+class InstallPiecesTest(XdgTestCase):
+    def test_desktop_entry(self):
+        text = system.desktop_entry()
+        exec_line = next(l for l in text.splitlines() if l.startswith("Exec="))
+        self.assertTrue(os.path.isabs(exec_line[len("Exec="):]))
+        self.assertIn("Name=Help Me", text)
+        self.assertIn("Icon=help-browser-symbolic", text)
+        self.assertIn("Terminal=false", text)
+
+    def test_whitelist_helpers(self):
+        self.assertEqual(system.with_item(["a"], "b"), ["a", "b"])
+        self.assertEqual(system.with_item(["a", "b"], "b"), ["a", "b"])
+        self.assertEqual(system.without_item(["a", "b", "c"], "b"), ["a", "c"])
+
+    def test_link_is_ours(self):
+        link = os.path.join(self.root, "helpme")
+        self.assertFalse(system.link_is_ours(link))
+        os.symlink(system.REPO_BIN, link)
+        self.assertTrue(system.link_is_ours(link))
+        other = os.path.join(self.root, "other")
+        os.symlink("/usr/bin/true", other)
+        self.assertFalse(system.link_is_ours(other))

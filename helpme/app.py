@@ -190,6 +190,10 @@ class HelpMeApp(Adw.Application):
 
 
 def main(argv) -> int:
+    if "--install" in argv[1:] or "--uninstall" in argv[1:]:
+        from helpme import system
+        system.install() if "--install" in argv[1:] else system.uninstall()
+        return 0
     return HelpMeApp().run(argv)
 
 

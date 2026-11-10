@@ -91,3 +91,113 @@ def set_autostart(on: bool) -> None:
             os.remove(path)
         except FileNotFoundError:
             pass
+
+
+# ---- install / uninstall ----
+
+BMS_SCHEMA = "org.gnome.shell.extensions.blur-my-shell.applications"
+BMS_SCHEMA_DIRS = [
+    os.path.join(os.path.expanduser("~"), ".local/share/gnome-shell/extensions",
+                 "blur-my-shell@aunetx/schemas"),
+    "/usr/share/gnome-shell/extensions/blur-my-shell@aunetx/schemas",
+]
+
+
+def with_item(items: list[str], item: str) -> list[str]:
+    return list(items) if item in items else list(items) + [item]
+
+
+def without_item(items: list[str], item: str) -> list[str]:
+    return [i for i in items if i != item]
+
+
+def link_is_ours(path: str) -> bool:
+    return os.path.islink(path) and os.path.realpath(path) == os.path.realpath(REPO_BIN)
+
+
+def desktop_path() -> str:
+    base = os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"),
+                                                           ".local", "share")
+    return os.path.join(base, "applications", f"{APP_ID}.desktop")
+
+
+def desktop_entry() -> str:
+    return ("[Desktop Entry]\n"
+            "Type=Application\n"
+            "Name=Help Me\n"
+            "Comment=Screenshot your screen and ask Claude for help\n"
+            f"Exec={shlex.quote(helpme_path())}\n"
+            "Icon=help-browser-symbolic\n"
+            "Terminal=false\n"
+            "Categories=Utility;\n"
+            "Keywords=help;claude;screenshot;ai;\n"
+            "StartupNotify=true\n")
+
+
+def _bms_settings():
+    """Blur My Shell's application settings, or None if BMS isn't installed."""
+    source = Gio.SettingsSchemaSource.get_default()
+    if source and source.lookup(BMS_SCHEMA, True):
+        return Gio.Settings.new(BMS_SCHEMA)
+    for d in BMS_SCHEMA_DIRS:
+        if os.path.exists(os.path.join(d, "gschemas.compiled")):
+            src = Gio.SettingsSchemaSource.new_from_directory(d, source, False)
+            schema = src.lookup(BMS_SCHEMA, False)
+            if schema:
+                return Gio.Settings.new_full(schema, None, None)
+    return None
+
+
+def set_bms_whitelist(on: bool) -> bool:
+    bms = _bms_settings()
+    if bms is None:
+        return False
+    current = bms.get_strv("whitelist")
+    bms.set_strv("whitelist", with_item(current, APP_ID) if on else without_item(current, APP_ID))
+    Gio.Settings.sync()
+    return True
+
+
+def install() -> None:
+    from helpme.config import load_settings
+    link = user_bin()
+    os.makedirs(os.path.dirname(link), exist_ok=True)
+    if os.path.lexists(link) and not link_is_ours(link):
+        if not os.path.islink(link):
+            raise SystemExit(f"{link} exists and is not a symlink; not touching it.")
+        os.remove(link)
+    if not os.path.lexists(link):
+        os.symlink(REPO_BIN, link)
+    print(f"command:   {link} -> {REPO_BIN}")
+    os.makedirs(os.path.dirname(desktop_path()), exist_ok=True)
+    with open(desktop_path(), "w", encoding="utf-8") as f:
+        f.write(desktop_entry())
+    print(f"app entry: {desktop_path()}")
+    settings = load_settings()
+    set_shortcut(settings.shortcut)
+    print(f"shortcut:  {settings.shortcut} -> {shortcut_command()}")
+    if settings.autostart:
+        set_autostart(True)
+        print(f"autostart: {autostart_path()}")
+    if set_bms_whitelist(True):
+        print(f"blur:      {APP_ID} added to Blur My Shell's application whitelist")
+    else:
+        print("blur:      Blur My Shell not found; the window stays tinted without blur")
+
+
+def uninstall() -> None:
+    from helpme import config
+    link = user_bin()
+    if link_is_ours(link):
+        os.remove(link)
+        print(f"removed {link}")
+    for path in (desktop_path(), autostart_path()):
+        if os.path.exists(path):
+            os.remove(path)
+            print(f"removed {path}")
+    remove_shortcut()
+    print("removed the shortcut")
+    if set_bms_whitelist(False):
+        print("removed the Blur My Shell whitelist entry")
+    print("kept: settings", config.settings_path(), "| history", config.history_path(),
+          "| log", config.log_path(), "| screenshots in your screenshot folder")
