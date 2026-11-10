@@ -69,3 +69,49 @@ class InstallPiecesTest(XdgTestCase):
         other = os.path.join(self.root, "other")
         os.symlink("/usr/bin/true", other)
         self.assertFalse(system.link_is_ours(other))
+
+
+class KeyRecorderTest(XdgTestCase):
+    def setUp(self):
+        super().setUp()
+        import gi
+        gi.require_version("Gdk", "4.0")
+        from gi.repository import Gdk, Gtk
+        self.Gdk, self.Gtk = Gdk, Gtk
+        self.M = Gdk.ModifierType
+
+    def parse(self, accel):
+        ok, key, mods = self.Gtk.accelerator_parse(accel)
+        return ok, key, mods
+
+    def test_ctrl_circumflex(self):
+        self.assertEqual(system.accel_from_key(self.Gdk.KEY_dead_circumflex, self.M.CONTROL_MASK),
+                         "<Control>dead_circumflex")
+
+    def test_uppercase_with_shift_is_normalised(self):
+        accel = system.accel_from_key(self.Gdk.KEY_H, self.M.SUPER_MASK | self.M.SHIFT_MASK)
+        ok, key, mods = self.parse(accel)
+        self.assertTrue(ok)
+        self.assertEqual(key, self.Gdk.KEY_h)
+        self.assertEqual(mods, self.M.SUPER_MASK | self.M.SHIFT_MASK)
+
+    def test_lock_masks_ignored(self):
+        mod2 = getattr(self.M, "MOD2_MASK", 0) or 0
+        accel = system.accel_from_key(self.Gdk.KEY_q, self.M.CONTROL_MASK | self.M.LOCK_MASK | mod2)
+        self.assertEqual(self.parse(accel)[2], self.M.CONTROL_MASK)
+
+    def test_rejects_modifier_only_and_plain_typing(self):
+        self.assertIsNone(system.accel_from_key(self.Gdk.KEY_Control_L, self.M.CONTROL_MASK))
+        self.assertIsNone(system.accel_from_key(self.Gdk.KEY_a, 0))
+        self.assertIsNone(system.accel_from_key(self.Gdk.KEY_A, self.M.SHIFT_MASK))
+        self.assertIsNone(system.accel_from_key(self.Gdk.KEY_dead_circumflex, 0))
+
+    def test_function_key_alone_ok(self):
+        self.assertEqual(system.accel_from_key(self.Gdk.KEY_F9, 0), "F9")
+
+    def test_pretty_accel(self):
+        self.assertEqual(system.pretty_accel("<Control>dead_circumflex"), "Ctrl+^")
+        label = system.pretty_accel("<Super><Shift>h")
+        self.assertIn("Super", label)
+        self.assertTrue(label.endswith("H"))
+        self.assertEqual(system.pretty_accel("garbage<"), "garbage<")

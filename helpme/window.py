@@ -330,8 +330,8 @@ class HelpWindow(Adw.ApplicationWindow):
         row.dot.set_css_classes(["dot", req.status])
 
     def _update_empty(self) -> None:
-        self.empty.set_description(
-            f"Press {self.app.shortcut_label()} anywhere to get help with your screen.")
+        self.empty.set_description(GLib.markup_escape_text(
+            f"Press {self.app.shortcut_label()} anywhere to get help with your screen.", -1))
         self.lib_stack.set_visible_child_name("list" if self._rows else "empty")
 
     def _on_row_activated(self, _list, row) -> None:

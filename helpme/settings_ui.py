@@ -57,13 +57,13 @@ class SettingsDialog(Adw.PreferencesDialog):
         cap.add(flash)
 
         # ---- shortcut ----
-        key = Adw.PreferencesGroup(
-            title="Shortcut",
-            description=GLib.markup_escape_text(
-                "Written like <Super><Shift>h or <Control><Alt>q, then press Enter.", -1))
+        key = Adw.PreferencesGroup(title="Shortcut")
         page.add(key)
-        self.key_row = Adw.EntryRow(title="Help key", text=s.shortcut, show_apply_button=True)
-        self.key_row.connect("apply", self._on_shortcut)
+        self.key_row = Adw.ActionRow(title="Help key", subtitle=self.app.shortcut_label(),
+                                     use_markup=False)
+        change_key = Gtk.Button(label="Change…", valign=Gtk.Align.CENTER)
+        change_key.connect("clicked", lambda _b: self._record_shortcut())
+        self.key_row.add_suffix(change_key)
         key.add(self.key_row)
 
         # ---- claude ----
@@ -140,19 +140,23 @@ class SettingsDialog(Adw.PreferencesDialog):
         if mode == "area" and not self.app.settings.area:
             self.pick_area()
 
-    def _on_shortcut(self, row):
-        accel = row.get_text().strip()
-        try:
-            system.set_shortcut(accel)
-        except ValueError:
-            self.add_toast(_toast("Not a valid shortcut, e.g. <Super><Shift>h"))
-            row.set_text(self.app.settings.shortcut)
-            return
-        except GLib.Error as e:
-            self.add_toast(_toast(f"Could not set the shortcut: {e.message}"))
-            return
-        self._set("shortcut", accel)
-        self.add_toast(_toast(f"Shortcut is now {self.app.shortcut_label()}"))
+    def _record_shortcut(self):
+        old = self.app.settings.shortcut
+        system.suspend_shortcut()  # so pressing the current key doesn't fire a capture
+
+        def done(accel):
+            new = accel or old
+            try:
+                system.set_shortcut(new)
+            except (ValueError, GLib.Error) as e:
+                system.set_shortcut(old)
+                self.add_toast(_toast(f"Could not set the shortcut: {e}"))
+                return
+            if accel:
+                self._set("shortcut", accel)
+                self.key_row.set_subtitle(self.app.shortcut_label())
+                self.add_toast(_toast(f"Help key is now {self.app.shortcut_label()}"))
+        ShortcutRecorder(done).present(self)
 
     def _on_prompt(self, row):
         text = row.get_text().strip() or config.DEFAULT_PROMPT
@@ -197,6 +201,52 @@ class SettingsDialog(Adw.PreferencesDialog):
     def _area_saved(self):
         self.area_row.set_subtitle(area_label(self.app.settings.area))
         self.mode_row.set_selected(1)
+
+
+class ShortcutRecorder(Adw.Dialog):
+    """Press the new combination; Esc cancels."""
+
+    def __init__(self, on_done):
+        super().__init__(title="New help key", content_width=380)
+        self._on_done = on_done
+        self._result = None
+        self._called = False
+        view = Adw.ToolbarView()
+        view.add_top_bar(Adw.HeaderBar())
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, margin_top=18,
+                      margin_bottom=24, margin_start=24, margin_end=24)
+        box.append(Gtk.Label(label="Press the new shortcut", css_classes=["title-2"]))
+        self.hint = Gtk.Label(label="For example Ctrl+^ or Super+Shift+H · Esc cancels",
+                              wrap=True, justify=Gtk.Justification.CENTER,
+                              css_classes=["dim-label"])
+        box.append(self.hint)
+        view.set_content(box)
+        self.set_child(view)
+        keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        keys.connect("key-pressed", self._key)
+        self.add_controller(keys)
+        self.connect("closed", lambda _d: self._finish())
+
+    def _key(self, _c, keyval, _code, state):
+        mods = Gdk.ModifierType(int(state)) & Gtk.accelerator_get_default_mod_mask()
+        if keyval == Gdk.KEY_Escape and not mods:
+            self.close()
+            return True
+        accel = system.accel_from_key(keyval, state)
+        if accel is None:
+            name = Gdk.keyval_name(keyval) or ""
+            if not name.startswith(("Control_", "Shift_", "Alt_", "Super_", "Meta_")):
+                self.hint.set_label("Use a combination with Ctrl, Alt or Super "
+                                    "(or an F-key) · Esc cancels")
+            return True
+        self._result = accel
+        self.close()
+        return True
+
+    def _finish(self):
+        if not self._called:
+            self._called = True
+            self._on_done(self._result)
 
 
 class AreaPicker(Gtk.Window):

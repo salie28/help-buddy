@@ -42,6 +42,12 @@ class HelpMeApp(Adw.Application):
         self.history = History()
         self.history.load()
         cleanup_screenshots(self.settings.screenshot_dir, self.settings.keep_days, time.time())
+        try:
+            from helpme import system
+            if system.ensure_shortcut(self.settings.shortcut):
+                log.warning("help key binding was missing; restored %s", self.settings.shortcut)
+        except (ValueError, GLib.Error) as e:
+            log.error("could not check the help key binding: %s", e)
         Adw.StyleManager.get_default().set_color_scheme(Adw.ColorScheme.FORCE_DARK)
         provider = Gtk.CssProvider()
         provider.load_from_path(STYLE)
@@ -82,8 +88,8 @@ class HelpMeApp(Adw.Application):
         return self.window
 
     def shortcut_label(self) -> str:
-        ok, key, mods = Gtk.accelerator_parse(self.settings.shortcut)
-        return Gtk.accelerator_get_label(key, mods) if ok else self.settings.shortcut
+        from helpme.system import pretty_accel
+        return pretty_accel(self.settings.shortcut)
 
     # ---- requests ----
 

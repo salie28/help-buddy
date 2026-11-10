@@ -43,6 +43,42 @@ def valid_accel(accel: str) -> bool:
     return bool(ok) and key != 0
 
 
+_DEAD_KEYS = {"dead_circumflex": "^", "dead_grave": "`", "dead_acute": "´",
+              "dead_tilde": "~", "dead_diaeresis": "¨", "dead_cedilla": "¸",
+              "dead_abovering": "°", "dead_caron": "ˇ"}
+
+
+def accel_from_key(keyval: int, state) -> str | None:
+    """Accelerator string for a recorded key press, or None if it isn't a usable
+    global shortcut (modifier alone, or a key you'd normally type)."""
+    from gi.repository import Gdk
+    mods = Gdk.ModifierType(int(state)) & Gtk.accelerator_get_default_mod_mask()
+    keyval = Gdk.keyval_to_lower(keyval)
+    name = Gdk.keyval_name(keyval) or ""
+    if not name or name.startswith(("Control_", "Shift_", "Alt_", "Super_", "Meta_",
+                                    "Hyper_", "ISO_Level", "Caps_Lock", "Num_Lock")):
+        return None
+    is_fkey = name.startswith("F") and name[1:].isdigit()
+    typing_mods = mods & ~Gdk.ModifierType.SHIFT_MASK
+    if not is_fkey and not typing_mods:
+        return None  # plain or Shift+key would fire while typing
+    accel = Gtk.accelerator_name(keyval, mods)
+    return accel if valid_accel(accel) else None
+
+
+def pretty_accel(accel: str) -> str:
+    ok, key, mods = Gtk.accelerator_parse(accel)
+    if not ok or key == 0:
+        return accel
+    label = Gtk.accelerator_get_label(key, mods)
+    from gi.repository import Gdk
+    dead = _DEAD_KEYS.get(Gdk.keyval_name(key) or "")
+    if dead:
+        base = Gtk.accelerator_get_label(0, mods)
+        label = f"{base}+{dead}" if base else dead
+    return label
+
+
 def set_shortcut(accel: str) -> None:
     if not valid_accel(accel):
         raise ValueError(f"Not a valid shortcut: {accel!r}")
@@ -52,6 +88,26 @@ def set_shortcut(accel: str) -> None:
     custom.set_string("binding", accel)
     keys = Gio.Settings.new(MEDIA_KEYS)
     keys.set_strv("custom-keybindings", with_keybinding(keys.get_strv("custom-keybindings")))
+    Gio.Settings.sync()
+
+
+def ensure_shortcut(accel: str) -> bool:
+    """If Help Me is installed (our path is registered) but the binding was lost, e.g. the
+    app died while recording a new key, put it back. Returns True if it fixed something."""
+    keys = Gio.Settings.new(MEDIA_KEYS)
+    if KEYBINDING_PATH not in keys.get_strv("custom-keybindings"):
+        return False
+    custom = Gio.Settings.new_with_path(CUSTOM_KEY, KEYBINDING_PATH)
+    if custom.get_string("binding") == accel and custom.get_string("command"):
+        return False
+    set_shortcut(accel)
+    return True
+
+
+def suspend_shortcut() -> None:
+    """Unbind the key for a moment (while recording a new one); set_shortcut restores."""
+    custom = Gio.Settings.new_with_path(CUSTOM_KEY, KEYBINDING_PATH)
+    custom.set_string("binding", "")
     Gio.Settings.sync()
 
 
