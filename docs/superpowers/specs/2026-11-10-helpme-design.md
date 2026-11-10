@@ -29,9 +29,12 @@ Runs `helpme capture`. The app is single-instance (GApplication + D-Bus):
 
 ### One capture, step by step
 
-1. Screenshot through the desktop portal (`org.freedesktop.portal.Screenshot`,
-   non-interactive). Verified: the permission store already holds `screenshot: {'': yes}`,
-   so there is no dialog.
+1. Capture the screen. **Default (no flash):** grab one frame of the monitor through the
+   ScreenCast portal + PipeWire (`pipewiresrc`, `persist_mode=2` + a stored restore token).
+   The first time, GNOME asks once which screen to share; after that it is silent, about
+   0.25 s, at full 2560×1600. Verified 2026-11-10. **Setting "Screen flash on capture"
+   on:** use the Screenshot portal instead (`interactive=false`, already allowed, no
+   dialog). GNOME always flashes for that one, and the portal has no option to stop it.
 2. **Preset-area mode:** crop to the saved rectangle (stored as fractions of the full
    image, so display-scale changes don't break it).
 3. Save it as `<screenshot folder>/YYMMDD_HHMMSS.png` (suffix `_2`, `_3` if taken in the
@@ -119,6 +122,7 @@ it, which breaks the no-focus rule.
 | Model: Sonnet / Haiku / Opus | Sonnet |
 | Screenshot folder | `<XDG Pictures>/Screenshots/HelpMe` (here `~/Documents/uselessfolders/Pictures/Screenshots/HelpMe`, next to GNOME's own screenshots) |
 | Delete screenshots older than N days (0 = keep) | 30 |
+| Screen flash on capture (on = GNOME Screenshot portal with flash; off = silent screen-share frame) | off |
 | Start in background at login (no window) | off |
 | Jump to newest request when a capture comes in (view inside the window only) | on |
 

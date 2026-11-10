@@ -22,6 +22,7 @@ class ConfigTest(XdgTestCase):
         self.assertEqual(s.capture_mode, "full")
         self.assertIsNone(s.area)
         self.assertIs(s.autostart, False)
+        self.assertIs(s.flash, False)
         self.assertTrue(s.screenshot_dir.endswith(os.path.join("Screenshots", "HelpMe")))
         self.assertTrue(s.prompt.startswith("Look at this screenshot"))
 
@@ -44,12 +45,13 @@ class ConfigTest(XdgTestCase):
         self.assertEqual(load_settings(), Settings())
 
     def test_bad_value_falls_back_per_key(self):
-        self.write(json.dumps({"model": "gpt", "keep_days": "x",
+        self.write(json.dumps({"model": "gpt", "keep_days": "x", "flash": "yes",
                                "capture_mode": "area", "unknown": 1}))
         s = load_settings()
         self.assertEqual(s.model, "sonnet")
         self.assertEqual(s.keep_days, 30)
         self.assertEqual(s.capture_mode, "area")
+        self.assertIs(s.flash, False)
 
     def test_area_invalid_becomes_none(self):
         for bad in ([0.5, 0.5], [0, 0, 0, 0], "x", [0.5, 0.5, 0.8, 0.2], [0, 0, 1.5, 1]):

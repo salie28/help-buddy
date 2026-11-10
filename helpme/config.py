@@ -42,6 +42,10 @@ def log_path() -> str:
     return os.path.join(state_dir(), "helpme.log")
 
 
+def screencast_token_path() -> str:
+    return os.path.join(state_dir(), "screencast_token")
+
+
 def work_dir() -> str:
     """Empty folder claude runs in, so no project CLAUDE.md is picked up."""
     path = os.path.join(state_dir(), "work")
@@ -70,6 +74,7 @@ class Settings:
     model: str = "sonnet"
     screenshot_dir: str = dataclasses.field(default_factory=default_screenshot_dir)
     keep_days: int = 30
+    flash: bool = False  # False = silent ScreenCast frame grab, True = Screenshot portal
     autostart: bool = False
     jump_to_newest: bool = True
 
@@ -93,6 +98,7 @@ _VALIDATORS = {
     "model": lambda v: v in MODELS,
     "screenshot_dir": lambda v: isinstance(v, str) and v.strip() != "",
     "keep_days": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 3650,
+    "flash": lambda v: isinstance(v, bool),
     "autostart": lambda v: isinstance(v, bool),
     "jump_to_newest": lambda v: isinstance(v, bool),
 }

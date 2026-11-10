@@ -1,7 +1,8 @@
 import os
 from datetime import datetime
 
-from helpme.capture import area_to_pixels, screenshot_filename
+from helpme.capture import area_to_pixels, backend_for, screenshot_filename
+from helpme.config import Settings
 from tests.helpers import XdgTestCase
 
 
@@ -43,3 +44,12 @@ class FilenameTest(XdgTestCase):
         self.assertEqual(names, ["261110_122305.png", "261110_122305_2.png",
                                  "261110_122305_3.png"])
         self.assertEqual(os.path.dirname(p), self.root)
+
+
+class BackendTest(XdgTestCase):
+    def test_no_flash_uses_screencast(self):
+        self.assertEqual(backend_for(Settings()), "screencast")
+        self.assertEqual(backend_for(Settings(flash=False)), "screencast")
+
+    def test_flash_uses_screenshot_portal(self):
+        self.assertEqual(backend_for(Settings(flash=True)), "screenshot")

@@ -9,11 +9,22 @@ from datetime import datetime
 
 import gi
 gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import GdkPixbuf, Gio, GLib  # noqa: E402
+gi.require_version("Gst", "1.0")
+from gi.repository import GdkPixbuf, Gio, GLib, Gst  # noqa: E402
+
+from helpme import config  # noqa: E402
 
 MIN_SIDE = 16
 PORTAL_TIMEOUT_S = 30
+SHARE_DIALOG_TIMEOUT_S = 180  # first no-flash capture waits for the "Share screen" dialog
+PORTAL = "org.freedesktop.portal.Desktop"
+PORTAL_PATH = "/org/freedesktop/portal/desktop"
 log = logging.getLogger("helpme")
+
+
+def backend_for(settings) -> str:
+    """"screencast" = silent frame grab (no flash), "screenshot" = Screenshot portal (flash)."""
+    return "screenshot" if settings.flash else "screencast"
 
 
 def area_to_pixels(area, width: int, height: int) -> tuple[int, int, int, int]:
@@ -51,9 +62,9 @@ class Capturer:
         self._queue.append(("save", settings, on_done))
         self._next()
 
-    def capture_pixbuf(self, on_done) -> None:
+    def capture_pixbuf(self, settings, on_done) -> None:
         """on_done(pixbuf | None, error | None); nothing is saved."""
-        self._queue.append(("pixbuf", None, on_done))
+        self._queue.append(("pixbuf", settings, on_done))
         self._next()
 
     def _next(self) -> None:
@@ -69,7 +80,22 @@ class Capturer:
             threading.Thread(target=self._process, daemon=True,
                              args=(kind, settings, cb, portal_path)).start()
 
-        self._shoot(shot_done)
+        if backend_for(settings) == "screencast":
+            self._shoot_cast(shot_done)
+        else:
+            self._shoot(shot_done)
+
+    def _shoot_cast(self, done) -> None:
+        self._counter += 1
+        n = self._counter
+
+        def work():
+            try:
+                path, error = _grab_screencast_frame(n), None
+            except CaptureError as e:
+                path, error = None, str(e)
+            GLib.idle_add(lambda: (done(path, error), GLib.SOURCE_REMOVE)[1])
+        threading.Thread(target=work, daemon=True).start()
 
     def _finish(self, cb, value, error) -> None:
         def run():
@@ -159,6 +185,145 @@ class Capturer:
                  "org.freedesktop.portal.Screenshot", "Screenshot",
                  GLib.Variant("(sa{sv})", ("", options)), GLib.VariantType("(o)"),
                  Gio.DBusCallFlags.NONE, -1, None, on_called)
+
+
+class CaptureError(Exception):
+    pass
+
+
+def _grab_screencast_frame(n: int) -> str:
+    """Blocking (run in a worker thread): one frame of the monitor via the ScreenCast
+    portal + PipeWire. Silent once the user has allowed sharing; the restore token
+    keeps that permission. Returns the path of a PNG in the state dir."""
+    ctx = GLib.MainContext.new()
+    ctx.push_thread_default()
+    session = None
+    bus = None
+    try:
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION)
+        sender = bus.get_unique_name()[1:].replace(".", "_")
+        iface = "org.freedesktop.portal.ScreenCast"
+        seq = [0]
+
+        def request(method, fmt, args, opts, timeout):
+            seq[0] += 1
+            token = f"helpmecast{os.getpid()}_{n}_{seq[0]}"
+            opts["handle_token"] = GLib.Variant("s", token)
+            path = f"/org/freedesktop/portal/desktop/request/{sender}/{token}"
+            loop = GLib.MainLoop.new(ctx, False)
+            res = {}
+
+            def on_resp(_c, _s, _o, _i, _sig, params):
+                res["code"], res["results"] = params.unpack()
+                loop.quit()
+
+            def on_timeout():
+                loop.quit()
+                return GLib.SOURCE_REMOVE
+
+            sub = bus.signal_subscribe(PORTAL, "org.freedesktop.portal.Request", "Response",
+                                       path, None, Gio.DBusSignalFlags.NONE, on_resp)
+            src = GLib.timeout_source_new_seconds(timeout)
+            src.set_callback(on_timeout)
+            src.attach(ctx)
+            try:
+                bus.call_sync(PORTAL, PORTAL_PATH, iface, method,
+                              GLib.Variant(fmt, (*args, opts)), None,
+                              Gio.DBusCallFlags.NONE, -1, None)
+                loop.run()
+            except GLib.Error as e:
+                raise CaptureError(f"Screen-share portal error ({method}): {e.message}")
+            finally:
+                src.destroy()
+                bus.signal_unsubscribe(sub)
+            if "code" not in res:
+                raise CaptureError(f"Screen-share portal did not answer ({method})")
+            if res["code"] == 1:
+                raise CaptureError("Screen sharing was not allowed. No-flash capture needs it "
+                                   "once: allow it, or turn on 'Screen flash' in Settings.")
+            if res["code"] != 0:
+                raise CaptureError(f"Screen-share portal failed ({method}, code {res['code']})")
+            return res["results"]
+
+        r = request("CreateSession", "(a{sv})", (),
+                    {"session_handle_token": GLib.Variant("s", f"helpmes{os.getpid()}_{n}")},
+                    PORTAL_TIMEOUT_S)
+        session = r["session_handle"]
+        opts = {"types": GLib.Variant("u", 1),          # monitor
+                "multiple": GLib.Variant("b", False),
+                "cursor_mode": GLib.Variant("u", 1),    # hidden, like a screenshot
+                "persist_mode": GLib.Variant("u", 2)}   # until revoked
+        token = _read_token()
+        if token:
+            opts["restore_token"] = GLib.Variant("s", token)
+        request("SelectSources", "(oa{sv})", (session,), opts, PORTAL_TIMEOUT_S)
+        r = request("Start", "(osa{sv})", (session, ""), {}, SHARE_DIALOG_TIMEOUT_S)
+        if r.get("restore_token"):
+            _write_token(r["restore_token"])
+        streams = r.get("streams") or []
+        if not streams:
+            raise CaptureError("Screen-share portal returned no screen")
+        node = streams[0][0]
+        try:
+            ret, fds = bus.call_with_unix_fd_list_sync(
+                PORTAL, PORTAL_PATH, iface, "OpenPipeWireRemote",
+                GLib.Variant("(oa{sv})", (session, {})), GLib.VariantType("(h)"),
+                Gio.DBusCallFlags.NONE, -1, None, None)
+            fd = fds.get(ret.unpack()[0])
+        except GLib.Error as e:
+            raise CaptureError(f"Could not open PipeWire: {e.message}")
+        os.makedirs(config.state_dir(), exist_ok=True)
+        out = os.path.join(config.state_dir(), f"cast_{os.getpid()}_{n}.png")
+        _grab_frame(fd, node, out)
+        return out
+    finally:
+        if session and bus:
+            try:
+                bus.call_sync(PORTAL, session, "org.freedesktop.portal.Session", "Close",
+                              None, None, Gio.DBusCallFlags.NONE, -1, None)
+            except GLib.Error:
+                pass
+        ctx.pop_thread_default()
+
+
+def _grab_frame(fd: int, node: int, out: str) -> None:
+    if not Gst.is_initialized():
+        Gst.init(None)
+    pipe = Gst.parse_launch(
+        f"pipewiresrc fd={fd} path={node} always-copy=true num-buffers=1 "
+        f"! videoconvert ! pngenc ! filesink location={out}")
+    try:
+        pipe.set_state(Gst.State.PLAYING)
+        msg = pipe.get_bus().timed_pop_filtered(
+            10 * Gst.SECOND, Gst.MessageType.EOS | Gst.MessageType.ERROR)
+    finally:
+        pipe.set_state(Gst.State.NULL)
+        os.close(fd)
+    if msg is None:
+        _remove(out)
+        raise CaptureError("No frame from the screen share within 10 s")
+    if msg.type == Gst.MessageType.ERROR:
+        _remove(out)
+        raise CaptureError(f"Frame grab failed: {msg.parse_error()[0].message}")
+    if not os.path.exists(out) or os.path.getsize(out) == 0:
+        raise CaptureError("Frame grab produced no image")
+
+
+def _read_token() -> str:
+    try:
+        with open(config.screencast_token_path(), encoding="utf-8") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def _write_token(token: str) -> None:
+    os.makedirs(config.state_dir(), exist_ok=True)
+    tmp = config.screencast_token_path() + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(token)
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, config.screencast_token_path())
 
 
 def _remove(path) -> None:
