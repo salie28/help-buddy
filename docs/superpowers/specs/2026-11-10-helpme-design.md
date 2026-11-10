@@ -15,16 +15,13 @@ the answer. Pressing the key never interrupts what you are doing.
 
 Runs `helpme capture`. The app is single-instance (GApplication + D-Bus):
 
-- **App already running:** the capture is handled by the running instance. Nothing
-  opens, nothing is raised, focus never changes, and the window stays on whatever desktop
-  you parked it on.
-- **App not running:** the app starts and opens the Help window, then handles the capture.
-  This is the only time a window appears by itself. GNOME on Wayland always opens a new
-  window on the current desktop with focus, and that can't be avoided. You move it to
-  another desktop once.
-- **Closing the window** only hides it. The app keeps running in the background, so the
-  key keeps working without popping anything up. You reopen the window through the
-  launcher (Alt+X → "Help Me") or the app grid, and that shows the existing window.
+- **Window open (on any desktop):** the capture is handled by the running app. Nothing
+  is raised, focus never changes, and the window stays where you parked it.
+- **Window closed, or the app not running:** the screenshot is taken first, then the Help
+  window opens (on the current desktop, as GNOME always places a newly shown window). This
+  is the only time a window appears by itself. Changed 2026-11-10 at the user's request:
+  "if it's closed and I hit screenshot it does nothing".
+- **Closing the window** only hides it, and the app keeps running in the background.
 - **Quit** lives in the window's menu and fully stops the app.
 
 ### One capture, step by step

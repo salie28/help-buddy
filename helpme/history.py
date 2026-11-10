@@ -26,6 +26,8 @@ class Request:
     error: str = ""
     attempts: int = 0
     prompt: str = ""  # the prompt sent with the screenshot (context for follow-ups)
+    session: str = ""  # saved claude session that follow-ups resume
+    usage: dict = dataclasses.field(default_factory=dict)
     followups: list = dataclasses.field(default_factory=list)  # [{q, answer, status, error, attempts}]
 
 
@@ -40,7 +42,8 @@ def _followup_from_dict(d) -> dict | None:
     return {"q": d["q"], "status": d["status"],
             "answer": d["answer"] if isinstance(d.get("answer"), str) else "",
             "error": d["error"] if isinstance(d.get("error"), str) else "",
-            "attempts": attempts}
+            "attempts": attempts,
+            "usage": d["usage"] if isinstance(d.get("usage"), dict) else {}}
 
 
 def _from_dict(d) -> Request | None:
@@ -62,6 +65,8 @@ def _from_dict(d) -> Request | None:
                    error=d["error"] if isinstance(d.get("error"), str) else "",
                    attempts=attempts,
                    prompt=d["prompt"] if isinstance(d.get("prompt"), str) else "",
+                   session=d["session"] if isinstance(d.get("session"), str) else "",
+                   usage=d["usage"] if isinstance(d.get("usage"), dict) else {},
                    followups=[f for f in map(_followup_from_dict, d.get("followups") or []
                                              if isinstance(d.get("followups"), list) else [])
                               if f is not None])
@@ -123,7 +128,7 @@ class History:
         if r is None:
             raise KeyError(req_id)
         r.followups.append({"q": question, "answer": "", "status": "thinking", "error": "",
-                            "attempts": 0})
+                            "attempts": 0, "usage": {}})
         self.save()
         return len(r.followups) - 1
 

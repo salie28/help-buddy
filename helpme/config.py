@@ -75,6 +75,7 @@ class Settings:
     screenshot_dir: str = dataclasses.field(default_factory=default_screenshot_dir)
     keep_days: int = 30
     flash: bool = False  # False = silent ScreenCast frame grab, True = Screenshot portal
+    answer_length: str = "short"  # "short" (≈120 words) or "detailed"
     glass: int = 75  # window darkness in percent (30 = very see-through, 100 = solid)
     autostart: bool = False
     jump_to_newest: bool = True
@@ -100,10 +101,17 @@ _VALIDATORS = {
     "screenshot_dir": lambda v: isinstance(v, str) and v.strip() != "",
     "keep_days": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 3650,
     "flash": lambda v: isinstance(v, bool),
+    "answer_length": lambda v: v in ("short", "detailed"),
     "glass": lambda v: isinstance(v, int) and not isinstance(v, bool) and 30 <= v <= 100,
     "autostart": lambda v: isinstance(v, bool),
     "jump_to_newest": lambda v: isinstance(v, bool),
 }
+
+
+def should_show_window(window_exists: bool, window_visible: bool) -> bool:
+    """On a key press: open the Help window if it is closed (or was never opened);
+    if it is open — on any desktop — leave it alone (no raise, no focus)."""
+    return not (window_exists and window_visible)
 
 
 def glass_css(glass: int) -> str:

@@ -10,6 +10,7 @@ gi.require_version("Adw", "1")
 gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk  # noqa: E402
 
+from helpme.ask import format_usage  # noqa: E402
 from helpme.markdown import render  # noqa: E402
 
 STATUS_TEXT = {
@@ -257,7 +258,9 @@ class HelpWindow(Adw.ApplicationWindow):
             self._shown_image = None
         mode = "Preset area" if req.mode == "area" else "Whole screen"
         extra = "" if has_image or not req.image else " · screenshot deleted"
-        self.meta.set_label(f"{nice_time(req.created)} · {mode}{extra}")
+        usage = format_usage(req.usage)
+        self.meta.set_label(f"{nice_time(req.created)} · {mode}{extra}"
+                            + (f"\n{usage}" if usage else ""))
 
         busy = req.status in ("thinking", "retrying")
         self.spinner.set_visible(busy)
@@ -291,6 +294,10 @@ class HelpWindow(Adw.ApplicationWindow):
             if f["status"] == "done":
                 for kind, text in render(f["answer"]):
                     self.followups_box.append(self._block_widget(kind, text))
+                usage = format_usage(f.get("usage") or {})
+                if usage:
+                    self.followups_box.append(Gtk.Label(label=usage, xalign=0,
+                                                        css_classes=["dim-label", "caption"]))
                 continue
             row = Gtk.Box(spacing=8)
             if f["status"] in ("thinking", "retrying"):

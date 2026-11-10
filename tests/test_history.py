@@ -167,3 +167,29 @@ class FollowupTest(XdgTestCase):
         self.assertEqual(h.get("a" * 32).followups[0]["error"], "")
         self.assertEqual(h.get("b" * 32).followups, [])
         self.assertEqual(h.get("a" * 32).prompt, "")
+
+
+class SessionUsageTest(XdgTestCase):
+    def test_session_and_usage_round_trip(self):
+        h = History()
+        r = h.add("/a.png", "full")
+        u = {"model": "claude-sonnet-5-5", "tokens_in": 10, "tokens_out": 5, "cost": 0.01, "ms": 900}
+        h.update(r.id, session="sid", usage=u, status="done", answer="a")
+        i = h.add_followup(r.id, "q")
+        h.update_followup(r.id, i, usage=u, status="done", answer="b")
+        h2 = History()
+        h2.load()
+        got = h2.get(r.id)
+        self.assertEqual((got.session, got.usage, got.followups[0]["usage"]), ("sid", u, u))
+
+    def test_bad_session_usage_defaulted(self):
+        os.makedirs(os.path.dirname(config.history_path()), exist_ok=True)
+        base = {"id": "a" * 32, "created": "2026-11-10T12:00:00", "image": "/x.png",
+                "mode": "full", "status": "done", "session": 5, "usage": "lots",
+                "followups": [{"q": "ok", "status": "done", "usage": [1]}]}
+        with open(config.history_path(), "w") as f:
+            json.dump([base], f)
+        h = History()
+        h.load()
+        r = h.get("a" * 32)
+        self.assertEqual((r.session, r.usage, r.followups[0]["usage"]), ("", {}, {}))

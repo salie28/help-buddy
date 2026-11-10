@@ -74,6 +74,13 @@ class SettingsDialog(Adw.PreferencesDialog):
         model.connect("notify::selected",
                       lambda r, _p: self._set("model", config.MODELS[r.get_selected()]))
         ai.add(model)
+        length = Adw.ComboRow(title="Answer length",
+                              subtitle="Short ≈ 120 words unless steps or code are needed",
+                              model=Gtk.StringList.new(["Short", "Detailed"]))
+        length.set_selected(1 if s.answer_length == "detailed" else 0)
+        length.connect("notify::selected", lambda r, _p: self._set(
+            "answer_length", "detailed" if r.get_selected() == 1 else "short"))
+        ai.add(length)
         self.prompt_row = Adw.EntryRow(title="Prompt sent with every screenshot", text=s.prompt,
                                        show_apply_button=True)
         self.prompt_row.connect("apply", self._on_prompt)

@@ -28,11 +28,31 @@ class CommandTest(XdgTestCase):
     def test_build_command_exact(self):
         cmd = build_command("/x/claude", "sonnet")
         self.assertEqual(cmd, [
-            "/x/claude", "-p", "--model", "sonnet",
+            "/x/claude", "-p", "--model", "sonnet", "--effort", "high",
             "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
-            "--tools", "", "--no-session-persistence", "--strict-mcp-config",
-            "--setting-sources", "", "--system-prompt", ask.SYSTEM_PROMPT])
+            "--tools", "", "--strict-mcp-config", "--setting-sources", "",
+            "--system-prompt", ask.system_prompt("short"), "--no-session-persistence"])
         self.assertNotIn("--bare", cmd)
+
+    def test_build_command_new_session(self):
+        cmd = build_command("/x/claude", "sonnet", session_id="abc", length="detailed")
+        self.assertEqual(cmd[-2:], ["--session-id", "abc"])
+        self.assertNotIn("--no-session-persistence", cmd)
+        self.assertIn(ask.system_prompt("detailed"), cmd)
+
+    def test_build_command_resume(self):
+        cmd = build_command("/x/claude", "sonnet", resume="abc")
+        self.assertEqual(cmd[-2:], ["--resume", "abc"])
+        self.assertNotIn("--no-session-persistence", cmd)
+
+    def test_system_prompt_lengths(self):
+        self.assertIn("120 words", ask.system_prompt("short"))
+        self.assertNotIn("120 words", ask.system_prompt("detailed"))
+        self.assertTrue(ask.system_prompt("short").startswith(ask.SYSTEM_PROMPT))
+
+    def test_text_payload(self):
+        msg = json.loads(ask.build_text_payload("why?"))
+        self.assertEqual(msg["message"]["content"], [{"type": "text", "text": "why?"}])
 
     def test_payload_shape(self):
         line = build_payload(b"\x89PNG", "image/png", "hi")
@@ -52,6 +72,25 @@ class ParseTest(XdgTestCase):
     def test_parse_success(self):
         out = "\n".join([SYSTEM, ASSIST, result_line("Blue")]) + "\n"
         self.assertEqual(parse_output(out, "", 0), Result(True, "Blue"))
+
+    def test_parse_usage_and_session(self):
+        res = json.dumps({"type": "result", "subtype": "success", "is_error": False,
+                          "result": "Blue", "session_id": "sid-1", "duration_ms": 7940,
+                          "total_cost_usd": 0.0105,
+                          "usage": {"input_tokens": 4, "cache_read_input_tokens": 2599,
+                                    "cache_creation_input_tokens": 338, "output_tokens": 760}})
+        r = parse_output("\n".join([SYSTEM, res]), "", 0)
+        self.assertTrue(r.ok)
+        self.assertEqual(r.session_id, "sid-1")
+        self.assertEqual(r.usage, {"model": "claude-sonnet-5-5", "tokens_in": 2941,
+                                   "tokens_out": 760, "cost": 0.0105, "ms": 7940})
+
+    def test_format_usage(self):
+        u = {"model": "claude-sonnet-5-5", "tokens_in": 2941, "tokens_out": 760,
+             "cost": 0.0105, "ms": 7940}
+        self.assertEqual(ask.format_usage(u), "Sonnet 5.5 · 3.7k tokens · ≈$0.01 · 8 s")
+        self.assertEqual(ask.format_usage({}), "")
+        self.assertEqual(ask.format_usage({"model": "x", "tokens_in": "bad"}), "")
 
     def test_parse_error_result(self):
         msg = ("There's an issue with the selected model (no-such-model). It may not exist "
@@ -160,3 +199,30 @@ class FollowupPromptTest(XdgTestCase):
                 prompt=job.prompt)):
             a.ask("r2", "/x.png", ask.config.Settings(prompt="default"), None, None)
         self.assertEqual(seen["prompt"], "default")
+
+
+class SessionFileTest(XdgTestCase):
+    def test_session_file_location(self):
+        path = ask.session_file("sid-1")
+        work = ask.config.work_dir()
+        import re
+        self.assertEqual(os.path.basename(os.path.dirname(path)), re.sub(r"[^A-Za-z0-9]", "-", work))
+        self.assertTrue(path.endswith("/sid-1.jsonl"))
+        self.assertTrue(path.startswith(os.path.join(self.root, ".claude", "projects")))
+
+    def test_delete_and_cleanup_sessions(self):
+        import time
+        os.makedirs(os.path.dirname(ask.session_file("x")), exist_ok=True)
+        old, new = ask.session_file("old"), ask.session_file("new")
+        for p, age in ((old, 40), (new, 1)):
+            open(p, "w").close()
+            t = time.time() - age * 86400
+            os.utime(p, (t, t))
+        ask.delete_session("new")
+        self.assertFalse(os.path.exists(new))
+        ask.delete_session("")  # no-op
+        ask.delete_session("../../etc")  # never escapes the folder
+        open(new, "w").close()
+        self.assertEqual(ask.cleanup_sessions(30, time.time()), [old])
+        self.assertTrue(os.path.exists(new))
+        self.assertEqual(ask.cleanup_sessions(0, time.time()), [])

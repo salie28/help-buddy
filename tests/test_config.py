@@ -24,6 +24,7 @@ class ConfigTest(XdgTestCase):
         self.assertIs(s.autostart, False)
         self.assertIs(s.flash, False)
         self.assertEqual(s.glass, 75)
+        self.assertEqual(s.answer_length, "short")
         self.assertTrue(s.screenshot_dir.endswith(os.path.join("Screenshots", "HelpMe")))
         self.assertTrue(s.prompt.startswith("Look at this screenshot"))
 
@@ -78,3 +79,9 @@ class ConfigTest(XdgTestCase):
         self.assertIn("rgba(30, 30, 30, 0.75)", css)
         self.assertIn("rgba(12, 12, 12, 0.81)", css)
         self.assertIn("rgba(12, 12, 12, 1.00)", config.glass_css(100))
+
+    def test_answer_length_values(self):
+        self.write(json.dumps({"answer_length": "detailed"}))
+        self.assertEqual(load_settings().answer_length, "detailed")
+        self.write(json.dumps({"answer_length": "novel"}))
+        self.assertEqual(load_settings().answer_length, "short")

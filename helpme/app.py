@@ -29,7 +29,6 @@ class HelpMeApp(Adw.Application):
         self.history = None
         self.asker = Asker()
         self.capturer = Capturer()
-        self._first_command = True
 
     # ---- lifecycle ----
 
@@ -42,6 +41,8 @@ class HelpMeApp(Adw.Application):
         self.history = History()
         self.history.load()
         cleanup_screenshots(self.settings.screenshot_dir, self.settings.keep_days, time.time())
+        from helpme.ask import cleanup_sessions
+        cleanup_sessions(self.settings.keep_days, time.time())
         try:
             from helpme import system
             if system.ensure_shortcut(self.settings.shortcut):
@@ -68,13 +69,15 @@ class HelpMeApp(Adw.Application):
 
     def do_command_line(self, command_line):
         args = command_line.get_arguments()[1:]
-        first, self._first_command = self._first_command, False
         if "capture" in args:
-            # Only the press that starts the app opens the window (after the shot, so it
-            # isn't in it); later presses never raise or focus anything.
-            if first:
+            # Closed (or never opened) → open it after the shot, so it isn't in it.
+            # Open on any desktop → leave it alone: no raise, no focus.
+            show = config.should_show_window(self.window is not None,
+                                             self.window is not None
+                                             and self.window.get_visible())
+            if show:
                 self.ensure_window()
-            self.start_capture(present_after=first)
+            self.start_capture(present_after=show)
         elif "--background" in args:
             pass
         else:
@@ -117,7 +120,8 @@ class HelpMeApp(Adw.Application):
 
     def _ask(self, req_id):
         req = self.history.get(req_id)
-        self.asker.ask(req_id, req.image, self.settings, self._on_retrying, self._on_done)
+        self.asker.ask(req_id, req.image, self.settings, self._on_retrying, self._on_done,
+                       new_session=True)
 
     def _on_retrying(self, req_id, error, _delay):
         if self.history.get(req_id) is None:
@@ -130,7 +134,8 @@ class HelpMeApp(Adw.Application):
             return
         if result.ok:
             self.history.update(req_id, status="done", answer=result.text, error="",
-                                attempts=attempts)
+                                attempts=attempts, session=result.session_id,
+                                usage=result.usage)
         else:
             self.history.update(req_id, status="failed", error=result.text, attempts=attempts)
         self._refresh(req_id)
@@ -148,7 +153,10 @@ class HelpMeApp(Adw.Application):
                                 error="The screenshot for this request is gone, so it can't "
                                       "be sent again.")
         else:
-            self.history.update(req_id, status="thinking", error="", attempts=0)
+            from helpme.ask import delete_session
+            delete_session(req.session)
+            self.history.update(req_id, status="thinking", error="", attempts=0, session="",
+                                usage={})
             self._ask(req_id)
         self._refresh(req_id)
 
@@ -171,8 +179,14 @@ class HelpMeApp(Adw.Application):
         self._ask_followup(req_id, i)
 
     def _ask_followup(self, req_id, i):
-        from helpme.ask import followup_prompt
+        from helpme.ask import followup_prompt, session_file
         req = self.history.get(req_id)
+        if req.session and os.path.exists(session_file(req.session)):
+            # Same conversation: claude resumes the saved session (screenshot not resent).
+            self.asker.ask(f"{req_id}:{i}", req.image, self.settings, self._on_f_retrying,
+                           self._on_f_done, prompt=req.followups[i]["q"], resume=req.session)
+            return
+        # Older request without a saved session: resend screenshot + the conversation.
         previous = [(f["q"], f["answer"]) for f in req.followups[:i] if f["status"] == "done"]
         text = followup_prompt(req.prompt or self.settings.prompt, req.answer, previous,
                                req.followups[i]["q"])
@@ -199,7 +213,7 @@ class HelpMeApp(Adw.Application):
             return
         if result.ok:
             self.history.update_followup(req_id, i, status="done", answer=result.text,
-                                         error="", attempts=attempts)
+                                         error="", attempts=attempts, usage=result.usage)
         else:
             self.history.update_followup(req_id, i, status="failed", error=result.text,
                                          attempts=attempts)
@@ -226,9 +240,11 @@ class HelpMeApp(Adw.Application):
         self._refresh(req_id)
 
     def _cancel_all(self, req):
+        from helpme.ask import delete_session
         self.asker.cancel(req.id)
         for i in range(len(req.followups)):
             self.asker.cancel(f"{req.id}:{i}")
+        delete_session(req.session)
 
     def delete(self, req_id):
         req = self.history.get(req_id)
