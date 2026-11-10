@@ -26,6 +26,12 @@ class MarkdownTest(unittest.TestCase):
         self.assertIn('weight="bold"', blocks[0][1])
         self.assertEqual(blocks[1], ("para", "<b>a</b> and <tt>x&lt;y</tt>"))
 
+    def test_code_inside_bold(self):
+        self.assertEqual(render("**1. Tint on `.glass` (most likely fix)**"),
+                         [("para", "<b>1. Tint on <tt>.glass</tt> (most likely fix)</b>")])
+        self.assertEqual(render("**use `a*b*c` here**"),
+                         [("para", "<b>use <tt>a*b*c</tt> here</b>")])
+
     def test_italic(self):
         self.assertEqual(render("an *odd* one"), [("para", "an <i>odd</i> one")])
 

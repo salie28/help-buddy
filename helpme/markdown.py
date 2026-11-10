@@ -29,13 +29,17 @@ def _emphasis(escaped: str) -> str:
 
 
 def _inline(raw: str) -> str:
-    out, pos = [], 0
-    for m in _CODE_SPAN.finditer(raw):
-        out.append(_emphasis(_esc(raw[pos:m.start()])))
-        out.append("<tt>" + _esc(m.group(1)) + "</tt>")
-        pos = m.end()
-    out.append(_emphasis(_esc(raw[pos:])))
-    return "".join(out)
+    # Swap code spans for placeholders so **bold `code` bold** still pairs up, and so
+    # emphasis markers inside code stay literal.
+    raw = raw.replace("\ue000", "").replace("\ue001", "")
+    spans: list[str] = []
+
+    def stash(m):
+        spans.append("<tt>" + _esc(m.group(1)) + "</tt>")
+        return f"\ue000{len(spans) - 1}\ue001"
+
+    text = _emphasis(_esc(_CODE_SPAN.sub(stash, raw)))
+    return re.sub("\ue000(\\d+)\ue001", lambda m: spans[int(m.group(1))], text)
 
 
 def _valid(markup: str) -> bool:

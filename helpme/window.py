@@ -192,7 +192,7 @@ class HelpWindow(Adw.ApplicationWindow):
         self.status_box.append(self.status_label)
         box.append(self.status_box)
 
-        self.error_label = Gtk.Label(xalign=0, wrap=True, selectable=True,
+        self.error_label = Gtk.Label(xalign=0, wrap=True, selectable=True, focusable=False,
                                      wrap_mode=2, css_classes=["dim-label", "error-text"])
         box.append(self.error_label)
 
@@ -264,11 +264,13 @@ class HelpWindow(Adw.ApplicationWindow):
     def _block_widget(kind: str, text: str) -> Gtk.Widget:
         if kind == "code":
             label = Gtk.Label(label=text, xalign=0, selectable=True, wrap=True, wrap_mode=2,
-                              css_classes=["monospace"])
+                              focusable=False, css_classes=["monospace"])
             frame = Gtk.Box(css_classes=["code"])
             frame.append(label)
             return frame
-        label = Gtk.Label(xalign=0, selectable=True, wrap=True, wrap_mode=2,
+        # focusable=False: otherwise GTK puts a text caret in the first label on open;
+        # mouse selection still works.
+        label = Gtk.Label(xalign=0, selectable=True, wrap=True, wrap_mode=2, focusable=False,
                           use_markup=True, css_classes=["answer-text", kind])
         label.set_markup(text)
         return label
