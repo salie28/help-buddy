@@ -34,7 +34,9 @@ Runs `helpme capture`. The app is single-instance (GApplication + D-Bus):
    so there is no dialog.
 2. **Preset-area mode:** crop to the saved rectangle (stored as fractions of the full
    image, so display-scale changes don't break it).
-3. Save it as `~/Pictures/Screenshots/HelpMe/YYMMDD_HHMMSS.png`.
+3. Save it as `<screenshot folder>/YYMMDD_HHMMSS.png` (suffix `_2`, `_3` if taken in the
+   same second), then delete the portal's own copy. The portal always writes to the same
+   file name, so captures run one at a time (each takes about 0.5 s).
 4. Create a new request entry and show it on the answer page with a "Thinking…" spinner.
 5. Ask Claude in the background (see below). There is **no timeout**; a running request has
    a small × to cancel it.
@@ -66,8 +68,18 @@ it, which breaks the no-focus rule.
   - `--strict-mcp-config` with no MCP servers
   - user setting sources skipped, so your hooks and plugins don't load or slow startup
   - own short system prompt
-- **Verify first in implementation:** that the subscription login still works with the
-  user settings skipped, and the exact flag combination for stream-json in and out.
+- Verified 2026-11-10:
+  - Command: `claude -p --model <m> --input-format stream-json --output-format stream-json
+    --verbose --tools "" --no-session-persistence --strict-mcp-config --setting-sources ""
+    --system-prompt <...>`.
+  - It works on the subscription login and takes about 2.5 s. `--bare` is NOT usable
+    because it drops the OAuth login.
+  - An error comes back as exit 1 with `"is_error": true` and a readable message in
+    `result`.
+- claude runs with its working directory set to an empty folder, so no project
+  CLAUDE.md is picked up.
+- Don't register an app id with the portal's host Registry: the existing screenshot
+  permission is for the empty app id, and a new id would trigger a permission dialog.
 - Runs through `Gio.Subprocess` (async, no threads); stdout is parsed for the final
   result text.
 
@@ -105,7 +117,7 @@ it, which breaks the no-focus rule.
 | Shortcut (written as a GNOME custom shortcut) | Super+Shift+H |
 | Prompt | "Look at this screenshot, work out what I'm doing and what I probably need help with, then help — short and practical." |
 | Model: Sonnet / Haiku / Opus | Sonnet |
-| Screenshot folder | `~/Pictures/Screenshots/HelpMe` |
+| Screenshot folder | `<XDG Pictures>/Screenshots/HelpMe` (here `~/Documents/uselessfolders/Pictures/Screenshots/HelpMe`, next to GNOME's own screenshots) |
 | Delete screenshots older than N days (0 = keep) | 30 |
 | Start in background at login (no window) | off |
 | Jump to newest request when a capture comes in (view inside the window only) | on |
