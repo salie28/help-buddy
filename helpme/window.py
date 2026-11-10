@@ -21,16 +21,19 @@ STATUS_TEXT = {
 }
 
 
+def pixbuf_texture(pb) -> Gdk.Texture:
+    fmt = Gdk.MemoryFormat.R8G8B8A8 if pb.get_has_alpha() else Gdk.MemoryFormat.R8G8B8
+    return Gdk.MemoryTexture.new(pb.get_width(), pb.get_height(), fmt,
+                                 pb.read_pixel_bytes(), pb.get_rowstride())
+
+
 def load_texture_async(path: str, max_w: int, max_h: int, callback) -> None:
     """Decode + downscale in a worker thread, then callback(texture | None) on the main loop."""
     def work():
         tex = None
         try:
             pb = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, max_w, max_h, True)
-            fmt = (Gdk.MemoryFormat.R8G8B8A8 if pb.get_has_alpha()
-                   else Gdk.MemoryFormat.R8G8B8)
-            tex = Gdk.MemoryTexture.new(pb.get_width(), pb.get_height(), fmt,
-                                        pb.read_pixel_bytes(), pb.get_rowstride())
+            tex = pixbuf_texture(pb)
         except (GLib.Error, OSError):
             tex = None
         GLib.idle_add(lambda: (callback(tex), GLib.SOURCE_REMOVE)[1])
@@ -136,7 +139,7 @@ class HelpWindow(Adw.ApplicationWindow):
             self.nav.pop_to_page(self.library_page)
 
     def toast(self, text: str) -> None:
-        self.toasts.add_toast(Adw.Toast(title=text, timeout=2))
+        self.toasts.add_toast(Adw.Toast(title=text, use_markup=False, timeout=2))
 
     # ---- building ----
 

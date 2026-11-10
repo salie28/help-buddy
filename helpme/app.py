@@ -178,10 +178,15 @@ class HelpMeApp(Adw.Application):
             self.window.reload()
 
     def open_settings(self):
-        pass  # Task 7
+        from helpme.settings_ui import SettingsDialog
+        win = self.ensure_window()
+        if not win.get_visible():
+            win.present()
+        SettingsDialog(self).present(win)
 
     def settings_changed(self):
         config.save_settings(self.settings)
+        self.apply_glass()
 
 
 def main(argv) -> int:

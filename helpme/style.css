@@ -116,3 +116,15 @@ window.helpme button.pill-ish:hover {
 window.helpme button.pill-ish.destructive label {
   color: #ff938c;
 }
+
+/* area picker */
+window.area-picker {
+  background-color: black;
+}
+
+window.area-picker .picker-hint {
+  background-color: rgba(13, 13, 13, 0.80);
+  color: white;
+  border-radius: 999px;
+  padding: 8px 18px;
+}
