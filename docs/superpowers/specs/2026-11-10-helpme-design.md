@@ -137,7 +137,9 @@ it, which breaks the no-focus rule.
 | `helpme/window.py` | Help window: answer page + library page |
 | `helpme/capture.py` | portal screenshot, crop, save |
 | `helpme/ask.py` | build + run the claude command, parse result, retry policy |
-| `helpme/settings.py` | settings load/save + Settings page + area picker |
+| `helpme/config.py` | paths, settings load/save, logging |
+| `helpme/settings_ui.py` | Settings page + area picker |
+| `helpme/system.py` | GNOME shortcut, autostart, install/uninstall, BMS whitelist |
 | `helpme/history.py` | history load/save, screenshot cleanup |
 | `helpme/markdown.py` | Markdown → Pango markup |
 | `helpme/style.css` | glass look |
