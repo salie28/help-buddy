@@ -89,7 +89,8 @@ it, which breaks the no-focus rule.
     requests, newest first, each with a thumbnail, time, first line of the answer and a
     status dot. Clicking one opens it on the answer page.
 - When a new capture comes in, the window switches to the answer page for that new
-  request, even if you were in the library or reading an older one. This only changes the
+  request, even if you were in the library or reading an older one (setting: "Jump to
+  newest request", on by default; when it is off, you stay where you are). This only changes the
   view inside the window; the window itself is never raised or focused.
 - **Header:** the back button (to the Library), the title "Help Me", a **Capture now**
   button, a gear for **Settings**, and a menu (Clear history, Quit).
@@ -107,6 +108,7 @@ it, which breaks the no-focus rule.
 | Screenshot folder | `~/Pictures/Screenshots/HelpMe` |
 | Delete screenshots older than N days (0 = keep) | 30 |
 | Start in background at login (no window) | off |
+| Jump to newest request when a capture comes in (view inside the window only) | on |
 
 ## Storage
 
