@@ -75,6 +75,7 @@ class Settings:
     screenshot_dir: str = dataclasses.field(default_factory=default_screenshot_dir)
     keep_days: int = 30
     flash: bool = False  # False = silent ScreenCast frame grab, True = Screenshot portal
+    glass: int = 75  # window darkness in percent (30 = very see-through, 100 = solid)
     autostart: bool = False
     jump_to_newest: bool = True
 
@@ -99,9 +100,18 @@ _VALIDATORS = {
     "screenshot_dir": lambda v: isinstance(v, str) and v.strip() != "",
     "keep_days": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 3650,
     "flash": lambda v: isinstance(v, bool),
+    "glass": lambda v: isinstance(v, int) and not isinstance(v, bool) and 30 <= v <= 100,
     "autostart": lambda v: isinstance(v, bool),
     "jump_to_newest": lambda v: isinstance(v, bool),
 }
+
+
+def glass_css(glass: int) -> str:
+    """Window tint for the given darkness (percent); the blur comes from Blur My Shell."""
+    top = glass / 100
+    bottom = min(1.0, top + 0.06)
+    return ("window.helpme .glass { background-image: linear-gradient(to bottom, "
+            f"rgba(30, 30, 30, {top:.2f}), rgba(12, 12, 12, {bottom:.2f})); }}")
 
 
 def load_settings(path: str | None = None) -> Settings:

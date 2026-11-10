@@ -23,6 +23,7 @@ class ConfigTest(XdgTestCase):
         self.assertIsNone(s.area)
         self.assertIs(s.autostart, False)
         self.assertIs(s.flash, False)
+        self.assertEqual(s.glass, 75)
         self.assertTrue(s.screenshot_dir.endswith(os.path.join("Screenshots", "HelpMe")))
         self.assertTrue(s.prompt.startswith("Look at this screenshot"))
 
@@ -64,3 +65,16 @@ class ConfigTest(XdgTestCase):
         self.assertEqual([f for f in os.listdir(d) if f.endswith(".tmp")], [])
         with open(config.settings_path()) as f:
             json.load(f)
+
+    def test_glass_range(self):
+        for bad in (10, 101, "x", True):
+            self.write(json.dumps({"glass": bad}))
+            self.assertEqual(load_settings().glass, 75, bad)
+        self.write(json.dumps({"glass": 40}))
+        self.assertEqual(load_settings().glass, 40)
+
+    def test_glass_css(self):
+        css = config.glass_css(75)
+        self.assertIn("rgba(30, 30, 30, 0.75)", css)
+        self.assertIn("rgba(12, 12, 12, 0.81)", css)
+        self.assertIn("rgba(12, 12, 12, 1.00)", config.glass_css(100))
