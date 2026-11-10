@@ -100,6 +100,17 @@ def parse_output(stdout: str, stderr: str, exit_code: int) -> Result:
     return Result(False, f"claude exited with code {exit_code}")
 
 
+def followup_prompt(first_prompt: str, first_answer: str,
+                    previous: list[tuple[str, str]], question: str) -> str:
+    """Text sent with the same screenshot for a follow-up (claude -p keeps no session)."""
+    parts = ["This is a follow-up about the same screenshot.",
+             f"The user first asked:\n{first_prompt}", f"You answered:\n{first_answer}"]
+    for q, a in previous:
+        parts += [f"The user then asked:\n{q}", f"You answered:\n{a}"]
+    parts.append(f"Now answer the user's new question:\n{question}")
+    return "\n\n".join(parts)
+
+
 def retry_delay(attempt: int) -> int | None:
     """Seconds to wait before the next attempt, given attempts made so far."""
     return RETRY_DELAY_S if attempt < MAX_ATTEMPTS else None
@@ -122,9 +133,10 @@ class Asker:
     def __init__(self):
         self._jobs: dict[str, _Job] = {}
 
-    def ask(self, req_id, image, settings, on_retrying, on_done) -> None:
+    def ask(self, req_id, image, settings, on_retrying, on_done, prompt=None) -> None:
         self.cancel(req_id)
-        job = _Job(image, settings.model, settings.prompt, on_retrying, on_done)
+        job = _Job(image, settings.model, prompt if prompt is not None else settings.prompt,
+                   on_retrying, on_done)
         self._jobs[req_id] = job
         self._attempt(req_id, job)
 

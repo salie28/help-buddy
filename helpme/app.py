@@ -109,7 +109,7 @@ class HelpMeApp(Adw.Application):
             req = self.history.add("", mode)
             self.history.update(req.id, status="failed", error=error)
         else:
-            req = self.history.add(path, mode)
+            req = self.history.add(path, mode, prompt=self.settings.prompt)
         if self.window is not None:
             self.window.request_added(req.id, jump=self.settings.jump_to_newest)
         if not error:
@@ -159,8 +159,81 @@ class HelpMeApp(Adw.Application):
         self.history.update(req_id, status="cancelled", error="")
         self._refresh(req_id)
 
+    # ---- follow-ups (job id "<req_id>:<index>") ----
+
+    def ask_followup(self, req_id, question):
+        req = self.history.get(req_id)
+        question = question.strip()
+        if req is None or not question or req.status != "done":
+            return
+        i = self.history.add_followup(req_id, question)
+        self._refresh(req_id)
+        self._ask_followup(req_id, i)
+
+    def _ask_followup(self, req_id, i):
+        from helpme.ask import followup_prompt
+        req = self.history.get(req_id)
+        previous = [(f["q"], f["answer"]) for f in req.followups[:i] if f["status"] == "done"]
+        text = followup_prompt(req.prompt or self.settings.prompt, req.answer, previous,
+                               req.followups[i]["q"])
+        self.asker.ask(f"{req_id}:{i}", req.image, self.settings, self._on_f_retrying,
+                       self._on_f_done, prompt=text)
+
+    def _followup_of(self, job_id):
+        req_id, _, i = job_id.partition(":")
+        req = self.history.get(req_id)
+        if req is None or not i.isdigit() or int(i) >= len(req.followups):
+            return None, None
+        return req_id, int(i)
+
+    def _on_f_retrying(self, job_id, error, _delay):
+        req_id, i = self._followup_of(job_id)
+        if req_id is None:
+            return
+        self.history.update_followup(req_id, i, status="retrying", error=error, attempts=1)
+        self._refresh(req_id)
+
+    def _on_f_done(self, job_id, result, attempts):
+        req_id, i = self._followup_of(job_id)
+        if req_id is None:
+            return
+        if result.ok:
+            self.history.update_followup(req_id, i, status="done", answer=result.text,
+                                         error="", attempts=attempts)
+        else:
+            self.history.update_followup(req_id, i, status="failed", error=result.text,
+                                         attempts=attempts)
+        self._refresh(req_id)
+
+    def retry_followup(self, req_id, i):
+        req = self.history.get(req_id)
+        if req is None or i >= len(req.followups):
+            return
+        if not req.image or not os.path.exists(req.image):
+            self.history.update_followup(req_id, i, status="failed",
+                                         error="The screenshot for this request is gone.")
+        else:
+            self.history.update_followup(req_id, i, status="thinking", error="", attempts=0)
+            self._ask_followup(req_id, i)
+        self._refresh(req_id)
+
+    def cancel_followup(self, req_id, i):
+        req = self.history.get(req_id)
+        if req is None or i >= len(req.followups):
+            return
+        self.asker.cancel(f"{req_id}:{i}")
+        self.history.update_followup(req_id, i, status="cancelled", error="")
+        self._refresh(req_id)
+
+    def _cancel_all(self, req):
+        self.asker.cancel(req.id)
+        for i in range(len(req.followups)):
+            self.asker.cancel(f"{req.id}:{i}")
+
     def delete(self, req_id):
-        self.asker.cancel(req_id)
+        req = self.history.get(req_id)
+        if req is not None:
+            self._cancel_all(req)
         self.history.delete(req_id)
         if self.window is not None:
             self.window.removed(req_id)
@@ -178,7 +251,7 @@ class HelpMeApp(Adw.Application):
 
     def clear_history(self):
         for req in self.history.all():
-            self.asker.cancel(req.id)
+            self._cancel_all(req)
         self.history.clear()
         if self.window is not None:
             self.window.reload()

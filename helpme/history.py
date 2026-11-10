@@ -25,6 +25,22 @@ class Request:
     answer: str = ""
     error: str = ""
     attempts: int = 0
+    prompt: str = ""  # the prompt sent with the screenshot (context for follow-ups)
+    followups: list = dataclasses.field(default_factory=list)  # [{q, answer, status, error, attempts}]
+
+
+def _followup_from_dict(d) -> dict | None:
+    if not isinstance(d, dict) or not isinstance(d.get("q"), str):
+        return None
+    if d.get("status") not in STATUSES:
+        return None
+    attempts = d.get("attempts")
+    if not isinstance(attempts, int) or isinstance(attempts, bool) or attempts < 0:
+        attempts = 0
+    return {"q": d["q"], "status": d["status"],
+            "answer": d["answer"] if isinstance(d.get("answer"), str) else "",
+            "error": d["error"] if isinstance(d.get("error"), str) else "",
+            "attempts": attempts}
 
 
 def _from_dict(d) -> Request | None:
@@ -44,7 +60,11 @@ def _from_dict(d) -> Request | None:
                    status=d["status"],
                    answer=d["answer"] if isinstance(d.get("answer"), str) else "",
                    error=d["error"] if isinstance(d.get("error"), str) else "",
-                   attempts=attempts)
+                   attempts=attempts,
+                   prompt=d["prompt"] if isinstance(d.get("prompt"), str) else "",
+                   followups=[f for f in map(_followup_from_dict, d.get("followups") or []
+                                             if isinstance(d.get("followups"), list) else [])
+                              if f is not None])
 
 
 class History:
@@ -66,16 +86,20 @@ class History:
             if r.status in ("thinking", "retrying"):
                 r.status, r.error = "failed", INTERRUPTED
                 changed = True
+            for f in r.followups:
+                if f["status"] in ("thinking", "retrying"):
+                    f["status"], f["error"] = "failed", INTERRUPTED
+                    changed = True
         if changed:
             self.save()
 
     def save(self) -> None:
         config.write_json_atomic(self.path, [dataclasses.asdict(r) for r in self._items])
 
-    def add(self, image: str, mode: str) -> Request:
+    def add(self, image: str, mode: str, prompt: str = "") -> Request:
         r = Request(id=uuid.uuid4().hex,
                     created=datetime.now().isoformat(timespec="seconds"),
-                    image=image, mode=mode, status="thinking")
+                    image=image, mode=mode, status="thinking", prompt=prompt)
         self._items.append(r)
         self.save()
         return r
@@ -93,6 +117,27 @@ class History:
             setattr(r, k, v)
         self.save()
         return r
+
+    def add_followup(self, req_id: str, question: str) -> int:
+        r = self.get(req_id)
+        if r is None:
+            raise KeyError(req_id)
+        r.followups.append({"q": question, "answer": "", "status": "thinking", "error": "",
+                            "attempts": 0})
+        self.save()
+        return len(r.followups) - 1
+
+    def update_followup(self, req_id: str, index: int, **fields) -> dict:
+        r = self.get(req_id)
+        if r is None:
+            raise KeyError(req_id)
+        f = r.followups[index]
+        for k, v in fields.items():
+            if k not in f:
+                raise AttributeError(k)
+            f[k] = v
+        self.save()
+        return f
 
     def delete(self, req_id: str) -> None:
         r = self.get(req_id)

@@ -134,3 +134,29 @@ class FindClaudeTest(XdgTestCase):
                 f.write("#!/bin/sh\n")
             os.chmod(fake, os.stat(fake).st_mode | stat.S_IXUSR)
             self.assertEqual(find_claude(), fake)
+
+
+class FollowupPromptTest(XdgTestCase):
+    def test_followup_prompt_has_whole_conversation(self):
+        from helpme.ask import followup_prompt
+        text = followup_prompt("help me", "Use INSTR.", [("and SUBSTR?", "SUBSTR cuts.")],
+                               "show an example")
+        for part in ("help me", "Use INSTR.", "and SUBSTR?", "SUBSTR cuts.", "show an example"):
+            self.assertIn(part, text)
+        self.assertLess(text.index("Use INSTR."), text.index("and SUBSTR?"))
+        self.assertTrue(text.rstrip().endswith("show an example") or
+                        text.index("show an example") > text.index("SUBSTR cuts."))
+
+    def test_ask_uses_prompt_override(self):
+        from unittest import mock
+        seen = {}
+        a = ask.Asker()
+        with mock.patch.object(ask.Asker, "_attempt", lambda self, rid, job: seen.update(
+                rid=rid, prompt=job.prompt)):
+            a.ask("r1:0", "/x.png", ask.config.Settings(prompt="default"), None, None,
+                  prompt="override")
+        self.assertEqual(seen, {"rid": "r1:0", "prompt": "override"})
+        with mock.patch.object(ask.Asker, "_attempt", lambda self, rid, job: seen.update(
+                prompt=job.prompt)):
+            a.ask("r2", "/x.png", ask.config.Settings(prompt="default"), None, None)
+        self.assertEqual(seen["prompt"], "default")

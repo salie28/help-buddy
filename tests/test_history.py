@@ -124,3 +124,46 @@ class HistoryTypesTest(XdgTestCase):
         r1 = h.get("1" * 32)
         self.assertEqual((r1.answer, r1.error, r1.attempts), ("", "", 0))
         self.assertEqual(h.get("5" * 32).attempts, 0)
+
+
+class FollowupTest(XdgTestCase):
+    def test_followup_round_trip(self):
+        h = History()
+        r = h.add("/a.png", "full", prompt="first prompt")
+        self.assertEqual(r.prompt, "first prompt")
+        self.assertEqual(r.followups, [])
+        i = h.add_followup(r.id, "and why?")
+        self.assertEqual(i, 0)
+        h.update_followup(r.id, 0, answer="because", status="done", attempts=1)
+        h2 = History()
+        h2.load()
+        f = h2.get(r.id).followups[0]
+        self.assertEqual((f["q"], f["answer"], f["status"], f["attempts"]),
+                         ("and why?", "because", "done", 1))
+
+    def test_load_marks_interrupted_followups(self):
+        h = History()
+        r = h.add("/a.png", "full")
+        h.update(r.id, status="done", answer="x")
+        h.add_followup(r.id, "q1")
+        h2 = History()
+        h2.load()
+        f = h2.get(r.id).followups[0]
+        self.assertEqual((f["status"], f["error"]), ("failed", INTERRUPTED))
+        self.assertEqual(h2.get(r.id).status, "done")
+
+    def test_bad_followups_dropped(self):
+        os.makedirs(os.path.dirname(config.history_path()), exist_ok=True)
+        base = {"id": "a" * 32, "created": "2026-11-10T12:00:00", "image": "/x.png",
+                "mode": "full", "status": "done", "answer": "x", "error": "", "attempts": 1,
+                "followups": [{"q": "ok", "answer": "fine", "status": "done"},
+                              {"q": 5, "status": "done"}, "junk",
+                              {"q": "no status"}]}
+        with open(config.history_path(), "w") as f:
+            json.dump([base, dict(base, id="b" * 32, followups="nope")], f)
+        h = History()
+        h.load()
+        self.assertEqual([f["q"] for f in h.get("a" * 32).followups], ["ok"])
+        self.assertEqual(h.get("a" * 32).followups[0]["error"], "")
+        self.assertEqual(h.get("b" * 32).followups, [])
+        self.assertEqual(h.get("a" * 32).prompt, "")

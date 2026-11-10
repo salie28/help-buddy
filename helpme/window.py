@@ -72,6 +72,7 @@ class HelpWindow(Adw.ApplicationWindow):
         self.app = app
         self.add_css_class("helpme")
         self.current_id = None
+        self._shown_image = None  # avoid re-decoding the screenshot on every refresh
         self._rows: dict[str, Gtk.ListBoxRow] = {}
         self.connect("close-request", self._on_close)
 
@@ -216,10 +217,25 @@ class HelpWindow(Adw.ApplicationWindow):
             actions.append(b)
         box.append(actions)
 
+        self.followups_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10,
+                                     margin_top=8)
+        box.append(self.followups_box)
+
         clamp = Adw.Clamp(maximum_size=760, child=box)
-        scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True,
-                                      child=clamp)
-        view.set_content(scroller)
+        self.answer_scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER,
+                                                  vexpand=True, child=clamp)
+        view.set_content(self.answer_scroller)
+
+        ask_bar = Gtk.Box(spacing=6, margin_top=6, margin_bottom=10, margin_start=12,
+                          margin_end=12, css_classes=["ask-bar"])
+        self.ask_entry = Gtk.Entry(placeholder_text="Ask a follow-up…", hexpand=True)
+        self.ask_entry.connect("activate", self._on_ask)
+        self.ask_btn = Gtk.Button(icon_name="mail-send-symbolic", tooltip_text="Send",
+                                  css_classes=["pill-ish"])
+        self.ask_btn.connect("clicked", self._on_ask)
+        ask_bar.append(self.ask_entry)
+        ask_bar.append(self.ask_btn)
+        view.add_bottom_bar(ask_bar)
         self.answer_page = Adw.NavigationPage(title="Answer", tag="answer", child=view)
         return self.answer_page
 
@@ -232,10 +248,13 @@ class HelpWindow(Adw.ApplicationWindow):
         self.answer_page.set_title(nice_time(req.created))
         has_image = bool(req.image) and os.path.exists(req.image)
         self.picture.set_visible(has_image)
-        if has_image:
+        if has_image and self._shown_image != req.image:
+            self._shown_image = req.image
             self.picture.set_paintable(None)
             load_texture_async(req.image, 920, 520,
                                lambda tex, rid=req_id: self._set_picture(rid, tex))
+        elif not has_image:
+            self._shown_image = None
         mode = "Preset area" if req.mode == "area" else "Whole screen"
         extra = "" if has_image or not req.image else " · screenshot deleted"
         self.meta.set_label(f"{nice_time(req.created)} · {mode}{extra}")
@@ -258,6 +277,59 @@ class HelpWindow(Adw.ApplicationWindow):
         self.copy_btn.set_visible(bool(req.answer))
         self.retry_btn.set_visible(req.status in ("failed", "cancelled"))
         self.cancel_btn.set_visible(busy)
+        self._fill_followups(req)
+
+    def _fill_followups(self, req) -> None:
+        child = self.followups_box.get_first_child()
+        while child is not None:
+            self.followups_box.remove(child)
+            child = self.followups_box.get_first_child()
+        for i, f in enumerate(req.followups):
+            q = Gtk.Label(label=f["q"], xalign=0, wrap=True, wrap_mode=2, selectable=True,
+                          focusable=False, css_classes=["you"])
+            self.followups_box.append(q)
+            if f["status"] == "done":
+                for kind, text in render(f["answer"]):
+                    self.followups_box.append(self._block_widget(kind, text))
+                continue
+            row = Gtk.Box(spacing=8)
+            if f["status"] in ("thinking", "retrying"):
+                row.append(Adw.Spinner())
+            row.append(Gtk.Label(label=STATUS_TEXT[f["status"]], css_classes=["heading"]))
+            if f["status"] in ("thinking", "retrying"):
+                b = Gtk.Button(label="Cancel", css_classes=["pill-ish"])
+                b.connect("clicked", lambda _b, n=i: self.app.cancel_followup(req.id, n))
+                row.append(b)
+            else:
+                b = Gtk.Button(label="Retry", css_classes=["pill-ish"])
+                b.connect("clicked", lambda _b, n=i: self.app.retry_followup(req.id, n))
+                row.append(b)
+            self.followups_box.append(row)
+            if f["error"]:
+                self.followups_box.append(Gtk.Label(
+                    label=f["error"], xalign=0, wrap=True, wrap_mode=2, selectable=True,
+                    focusable=False, css_classes=["dim-label", "error-text"]))
+        busy = any(f["status"] in ("thinking", "retrying") for f in req.followups)
+        ready = req.status == "done" and not busy
+        self.ask_entry.set_sensitive(ready)
+        self.ask_btn.set_sensitive(ready)
+        self.ask_entry.set_placeholder_text(
+            "Ask a follow-up…" if ready else
+            ("Waiting for the answer…" if req.status in ("thinking", "retrying") or busy
+             else "Follow-ups need a finished answer"))
+
+    def _on_ask(self, *_args) -> None:
+        text = self.ask_entry.get_text().strip()
+        if not text or not self.current_id:
+            return
+        self.ask_entry.set_text("")
+        self.app.ask_followup(self.current_id, text)
+        GLib.timeout_add(80, self._scroll_to_bottom)
+
+    def _scroll_to_bottom(self) -> bool:
+        adj = self.answer_scroller.get_vadjustment()
+        adj.set_value(adj.get_upper() - adj.get_page_size())
+        return GLib.SOURCE_REMOVE
 
     def _set_picture(self, req_id, texture) -> None:
         if req_id == self.current_id and texture is not None:
@@ -309,6 +381,8 @@ class HelpWindow(Adw.ApplicationWindow):
         row.thumb = Gtk.Picture(content_fit=Gtk.ContentFit.COVER, can_shrink=True,
                                 width_request=96, height_request=60, css_classes=["thumb"])
         row.add_prefix(row.thumb)
+        row.count = Gtk.Label(css_classes=["dim-label", "caption"], valign=Gtk.Align.CENTER)
+        row.add_suffix(row.count)
         row.dot = Gtk.Box(valign=Gtk.Align.CENTER, css_classes=["dot"])
         row.add_suffix(row.dot)
         self._fill_row(row, req_id)
@@ -327,6 +401,8 @@ class HelpWindow(Adw.ApplicationWindow):
             STATUS_TEXT[req.status] + (": " + first_line(req.error, 60) if req.error else ""))
         row.set_title(title or "(empty answer)")
         row.set_subtitle(nice_time(req.created))
+        row.count.set_label(f"+{len(req.followups)}" if req.followups else "")
+        row.count.set_visible(bool(req.followups))
         row.dot.set_css_classes(["dot", req.status])
 
     def _update_empty(self) -> None:

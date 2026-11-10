@@ -128,3 +128,18 @@ window.area-picker .picker-hint {
   border-radius: 999px;
   padding: 8px 18px;
 }
+
+/* follow-ups */
+window.helpme label.you {
+  background-color: rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-top: 6px;
+  font-weight: bold;
+}
+
+window.helpme .ask-bar entry {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  min-height: 34px;
+}
