@@ -76,6 +76,7 @@ class HelpWindow(Adw.ApplicationWindow):
         self._shown_image = None  # avoid re-decoding the screenshot on every refresh
         self._rows: dict[str, Gtk.ListBoxRow] = {}
         self.connect("close-request", self._on_close)
+        self.connect("map", lambda _w: GLib.idle_add(self._park_focus))
 
         self.toasts = Adw.ToastOverlay()
         glass = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["glass"])
@@ -135,6 +136,7 @@ class HelpWindow(Adw.ApplicationWindow):
         self._fill_answer(req_id)
         if self.nav.get_visible_page() is not self.answer_page:
             self.nav.push(self.answer_page)
+        GLib.idle_add(self._park_focus)
 
     def show_library(self) -> None:
         if self.nav.get_visible_page() is not self.library_page:
@@ -197,7 +199,7 @@ class HelpWindow(Adw.ApplicationWindow):
         self.status_box.append(self.status_label)
         box.append(self.status_box)
 
-        self.error_label = Gtk.Label(xalign=0, wrap=True, selectable=True, focusable=False,
+        self.error_label = Gtk.Label(xalign=0, wrap=True, selectable=True,
                                      wrap_mode=2, css_classes=["dim-label", "error-text"])
         box.append(self.error_label)
 
@@ -224,7 +226,7 @@ class HelpWindow(Adw.ApplicationWindow):
 
         clamp = Adw.Clamp(maximum_size=760, child=box)
         self.answer_scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER,
-                                                  vexpand=True, child=clamp)
+                                                  vexpand=True, child=clamp, focusable=True)
         view.set_content(self.answer_scroller)
 
         ask_bar = Gtk.Box(spacing=6, margin_top=6, margin_bottom=10, margin_start=12,
@@ -289,7 +291,7 @@ class HelpWindow(Adw.ApplicationWindow):
             child = self.followups_box.get_first_child()
         for i, f in enumerate(req.followups):
             q = Gtk.Label(label=f["q"], xalign=0, wrap=True, wrap_mode=2, selectable=True,
-                          focusable=False, css_classes=["you"])
+                          css_classes=["you"])
             self.followups_box.append(q)
             if f["status"] == "done":
                 for kind, text in render(f["answer"]):
@@ -315,7 +317,7 @@ class HelpWindow(Adw.ApplicationWindow):
             if f["error"]:
                 self.followups_box.append(Gtk.Label(
                     label=f["error"], xalign=0, wrap=True, wrap_mode=2, selectable=True,
-                    focusable=False, css_classes=["dim-label", "error-text"]))
+                    css_classes=["dim-label", "error-text"]))
         busy = any(f["status"] in ("thinking", "retrying") for f in req.followups)
         ready = req.status == "done" and not busy
         self.ask_entry.set_sensitive(ready)
@@ -342,20 +344,32 @@ class HelpWindow(Adw.ApplicationWindow):
         if req_id == self.current_id and texture is not None:
             self.picture.set_paintable(texture)
 
-    @staticmethod
-    def _block_widget(kind: str, text: str) -> Gtk.Widget:
+    def _block_widget(self, kind: str, text: str) -> Gtk.Widget:
         if kind == "code":
             label = Gtk.Label(label=text, xalign=0, selectable=True, wrap=True, wrap_mode=2,
-                              focusable=False, css_classes=["monospace"])
+                              hexpand=True, css_classes=["monospace"])
             frame = Gtk.Box(css_classes=["code"])
             frame.append(label)
+            copy = Gtk.Button(icon_name="edit-copy-symbolic", tooltip_text="Copy",
+                              valign=Gtk.Align.START, css_classes=["flat", "code-copy"])
+            copy.connect("clicked", lambda _b, t=text: self._copy(t))
+            frame.append(copy)
             return frame
-        # focusable=False: otherwise GTK puts a text caret in the first label on open;
-        # mouse selection still works.
-        label = Gtk.Label(xalign=0, selectable=True, wrap=True, wrap_mode=2, focusable=False,
+        label = Gtk.Label(xalign=0, selectable=True, wrap=True, wrap_mode=2,
                           use_markup=True, css_classes=["answer-text", kind])
         label.set_markup(text)
         return label
+
+    def _copy(self, text: str) -> None:
+        self.get_clipboard().set(text)
+        self.toast("Copied")
+
+    def _park_focus(self) -> bool:
+        """Keep keyboard focus off the selectable labels when the page opens, so no text
+        caret shows up; clicking a label to select text still focuses it normally."""
+        if self.nav.get_visible_page() is self.answer_page:
+            self.answer_scroller.grab_focus()
+        return GLib.SOURCE_REMOVE
 
     def _on_picture_clicked(self, *_args) -> None:
         req = self.app.history.get(self.current_id) if self.current_id else None
@@ -365,8 +379,7 @@ class HelpWindow(Adw.ApplicationWindow):
     def _on_copy(self, _btn) -> None:
         req = self.app.history.get(self.current_id) if self.current_id else None
         if req and req.answer:
-            self.get_clipboard().set(req.answer)
-            self.toast("Copied")
+            self._copy(req.answer)
 
     def _on_delete(self, _btn) -> None:
         req_id = self.current_id

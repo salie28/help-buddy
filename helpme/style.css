@@ -94,6 +94,18 @@ window.helpme .code {
   padding: 8px 10px;
 }
 
+window.helpme .code button.code-copy {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  margin: -4px -6px 0 6px;
+  opacity: 0.55;
+}
+
+window.helpme .code button.code-copy:hover {
+  opacity: 1;
+}
+
 window.helpme .code label {
   font-family: monospace;
   text-shadow: none;
