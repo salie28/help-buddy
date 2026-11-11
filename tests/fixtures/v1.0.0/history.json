@@ -1,0 +1,19 @@
+[
+  {
+    "id": "0123456789abcdef0123456789abcdef",
+    "created": "2026-11-11T08:48:36",
+    "image": "/home/user/Pictures/Screenshots/HelpBuddy/261111_084836.png",
+    "mode": "area",
+    "status": "done",
+    "answer": "Use `ip default-gateway 192.168.16.1`.",
+    "error": "",
+    "attempts": 1,
+    "prompt": "Look at this screenshot…",
+    "session": "8e53c1c1-6722-4a4b-8fe6-104f28ddcc7f",
+    "usage": {"model": "claude-sonnet-5-5", "tokens_in": 2941, "tokens_out": 560, "cost": 0.0105, "ms": 4940},
+    "followups": [
+      {"q": "and on layer 3?", "answer": "Use `ip route 0.0.0.0 0.0.0.0 192.168.16.1`.",
+       "status": "done", "error": "", "attempts": 1, "usage": {}}
+    ]
+  }
+]

@@ -51,11 +51,21 @@ say "Running tests…"
 say "Installing…"
 "$REPO/bin/helpbuddy" --install
 
-# 6. Start in the background (no window); the shortcut opens it after the first capture.
-gdbus call --session --dest local.claude.HelpBuddy --object-path /local/claude/HelpBuddy \
-  --method org.gtk.Actions.Activate quit [] {} >/dev/null 2>&1 || true
-sleep 1
+# 6. Restart so the new code runs (an update just re-runs this script). Wait until the
+#    old instance is really gone, or the new start would be handed to the old process.
+running() {
+  gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
+    --method org.freedesktop.DBus.NameHasOwner local.claude.HelpBuddy 2>/dev/null | grep -q true
+}
+if running; then
+  gdbus call --session --dest local.claude.HelpBuddy --object-path /local/claude/HelpBuddy \
+    --method org.gtk.Actions.Activate quit [] {} >/dev/null 2>&1 || true
+  for _ in $(seq 50); do running || break; sleep 0.1; done
+  running && { pkill -x helpbuddy || true; sleep 0.5; }
+fi
 setsid "$HOME/.local/bin/helpbuddy" --background >/dev/null 2>&1 < /dev/null &
+for _ in $(seq 50); do running && break; sleep 0.1; done
+running || echo "warning: Help Buddy did not start; run 'helpbuddy' to see why." >&2
 
 key=$(/usr/bin/python3 -c "import sys; sys.path.insert(0, '$REPO'); from helpbuddy import config, system; print(system.pretty_accel(config.load_settings().shortcut))" 2>/dev/null || echo "your shortcut")
 say "Done. Press $key anywhere to get help with your screen."

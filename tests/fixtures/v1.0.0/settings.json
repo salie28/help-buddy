@@ -1,0 +1,14 @@
+{
+  "capture_mode": "area",
+  "area": [0.0, 0.0, 0.5, 1.0],
+  "shortcut": "<Control>dead_circumflex",
+  "prompt": "Look at this screenshot, work out what I'm doing and what I probably need help with, then help — short and practical.",
+  "model": "sonnet",
+  "screenshot_dir": "/home/user/Pictures/Screenshots/HelpBuddy",
+  "keep_days": 30,
+  "flash": false,
+  "answer_length": "short",
+  "glass": 75,
+  "autostart": false,
+  "jump_to_newest": true
+}

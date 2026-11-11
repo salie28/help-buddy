@@ -24,6 +24,7 @@ frosted-glass window you keep on another desktop. It never steals your focus.
 - [How it works](#how-it-works)
 - [Requirements](#requirements)
 - [Install](#install)
+- [Updating](#updating)
 - [Usage](#usage)
 - [Settings](#settings)
 - [Privacy and data](#privacy-and-data)
@@ -100,6 +101,23 @@ The installer:
 6. starts Help Buddy in the background
 
 The first silent capture asks **once** which screen to share. Pick yours and allow it.
+
+## Updating
+
+Get the new version, then run the installer again:
+
+```bash
+cd ~/help-buddy
+git pull
+./install.sh
+```
+
+Re-running `install.sh` is the update. There is no auto-update; nothing changes until you run it.
+- **Kept:** your settings (key, area, model…), history, saved conversations, screenshots and the screen-share permission.
+- **The tests run first.** If they fail, nothing is touched and the old version keeps working.
+- **The running app is restarted,** so the new code is used right away.
+- **From another folder:** if you downloaded the new version somewhere else, run *its* `install.sh`. The `helpbuddy` command then switches to that copy.
+- **Confirmation:** the installer prints e.g. `Updated Help Buddy 1.0.0 → 1.1.0`.
 
 ## Usage
 
@@ -179,13 +197,22 @@ helpbuddy/settings_ui.py settings page, key recorder, area picker
 helpbuddy/system.py      shortcut, autostart, install / uninstall
 helpbuddy/markdown.py    Markdown → Pango markup
 tests/                unittest suite (no extra packages)
+tests/fixtures/vX.Y.Z settings + history as written by each release (upgrade tests)
 docs/superpowers/     design spec and implementation plan
 ```
 
 ```bash
-python3 -m unittest discover -s tests     # 92 tests, ~2 s
+python3 -m unittest discover -s tests     # 96 tests, ~2 s
 ./bin/helpbuddy --version
 ```
+
+**Releasing a new version:**
+1. Bump `__version__` in `helpbuddy/__init__.py`.
+2. Add `tests/fixtures/v<new>/` holding the settings and history the new release writes.
+3. Keep loading old files working:
+   - new settings keys need defaults
+   - new history fields must be optional
+4. Tag the release `v<new>`.
 
 ## Roadmap
 

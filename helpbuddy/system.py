@@ -214,8 +214,37 @@ def set_bms_whitelist(on: bool) -> bool:
     return True
 
 
+def installed_version_path() -> str:
+    from helpbuddy import config
+    return os.path.join(config.state_dir(), "installed_version")
+
+
+def read_installed_version() -> str | None:
+    try:
+        with open(installed_version_path(), encoding="utf-8") as f:
+            return f.read().strip() or None
+    except OSError:
+        return None
+
+
+def write_installed_version(version: str) -> None:
+    os.makedirs(os.path.dirname(installed_version_path()), exist_ok=True)
+    with open(installed_version_path(), "w", encoding="utf-8") as f:
+        f.write(version + "\n")
+
+
+def install_message(previous: str | None, current: str) -> str:
+    if previous is None:
+        return f"Installed Help Buddy {current}"
+    if previous == current:
+        return f"Reinstalled Help Buddy {current}"
+    return f"Updated Help Buddy {previous} → {current}"
+
+
 def install() -> None:
+    from helpbuddy import __version__
     from helpbuddy.config import load_settings
+    previous = read_installed_version()
     link = user_bin()
     os.makedirs(os.path.dirname(link), exist_ok=True)
     if os.path.lexists(link) and not link_is_ours(link):
@@ -239,6 +268,8 @@ def install() -> None:
         print(f"blur:      {APP_ID} added to Blur My Shell's application whitelist")
     else:
         print("blur:      Blur My Shell not found; the window stays tinted without blur")
+    write_installed_version(__version__)
+    print(install_message(previous, __version__))
 
 
 def uninstall() -> None:
