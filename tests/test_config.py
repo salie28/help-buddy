@@ -1,8 +1,8 @@
 import json
 import os
 
-from helpme import config
-from helpme.config import Settings, load_settings, save_settings
+from helpbuddy import config
+from helpbuddy.config import Settings, load_settings, save_settings
 from tests.helpers import XdgTestCase
 
 
@@ -25,16 +25,16 @@ class ConfigTest(XdgTestCase):
         self.assertIs(s.flash, False)
         self.assertEqual(s.glass, 75)
         self.assertEqual(s.answer_length, "short")
-        self.assertTrue(s.screenshot_dir.endswith(os.path.join("Screenshots", "HelpMe")))
+        self.assertTrue(s.screenshot_dir.endswith(os.path.join("Screenshots", "HelpBuddy")))
         self.assertTrue(s.prompt.startswith("Look at this screenshot"))
 
     def test_paths_follow_xdg(self):
         self.assertEqual(config.settings_path(),
-                         os.path.join(self.root, "config", "helpme", "settings.json"))
+                         os.path.join(self.root, "config", "helpbuddy", "settings.json"))
         self.assertEqual(config.history_path(),
-                         os.path.join(self.root, "data", "helpme", "history.json"))
+                         os.path.join(self.root, "data", "helpbuddy", "history.json"))
         self.assertEqual(config.log_path(),
-                         os.path.join(self.root, "state", "helpme", "helpme.log"))
+                         os.path.join(self.root, "state", "helpbuddy", "helpbuddy.log"))
         self.assertTrue(os.path.isdir(config.work_dir()))
 
     def test_round_trip(self):

@@ -1,7 +1,7 @@
 import os
 
-from helpme import system
-from helpme.system import (KEYBINDING_PATH, autostart_desktop, autostart_path, set_autostart,
+from helpbuddy import system
+from helpbuddy.system import (KEYBINDING_PATH, autostart_desktop, autostart_path, set_autostart,
                            shortcut_command, valid_accel, with_keybinding, without_keybinding)
 from tests.helpers import XdgTestCase
 
@@ -52,7 +52,7 @@ class InstallPiecesTest(XdgTestCase):
         text = system.desktop_entry()
         exec_line = next(l for l in text.splitlines() if l.startswith("Exec="))
         self.assertTrue(os.path.isabs(exec_line[len("Exec="):]))
-        self.assertIn("Name=Help Me", text)
+        self.assertIn("Name=Help Buddy", text)
         self.assertIn("Icon=help-browser-symbolic", text)
         self.assertIn("Terminal=false", text)
 
@@ -62,7 +62,7 @@ class InstallPiecesTest(XdgTestCase):
         self.assertEqual(system.without_item(["a", "b", "c"], "b"), ["a", "c"])
 
     def test_link_is_ours(self):
-        link = os.path.join(self.root, "helpme")
+        link = os.path.join(self.root, "helpbuddy")
         self.assertFalse(system.link_is_ours(link))
         os.symlink(system.REPO_BIN, link)
         self.assertTrue(system.link_is_ours(link))
@@ -119,8 +119,8 @@ class KeyRecorderTest(XdgTestCase):
 
 class PurgeAndVersionTest(XdgTestCase):
     def test_purge_data_removes_app_data_only(self):
-        from helpme import ask, config
-        shots = os.path.join(self.root, "Pictures", "Screenshots", "HelpMe")
+        from helpbuddy import ask, config
+        shots = os.path.join(self.root, "Pictures", "Screenshots", "HelpBuddy")
         os.makedirs(shots)
         open(os.path.join(shots, "261111_080000.png"), "w").close()
         config.save_settings(config.Settings(screenshot_dir=shots))
@@ -140,10 +140,10 @@ class PurgeAndVersionTest(XdgTestCase):
 
     def test_version_flag(self):
         import contextlib, io
-        from helpme import __version__
-        from helpme.app import main
+        from helpbuddy import __version__
+        from helpbuddy.app import main
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            self.assertEqual(main(["helpme", "--version"]), 0)
-        self.assertEqual(out.getvalue().strip(), f"Help Me {__version__}")
+            self.assertEqual(main(["helpbuddy", "--version"]), 0)
+        self.assertEqual(out.getvalue().strip(), f"Help Buddy {__version__}")
         self.assertEqual(__version__, "1.0.0")

@@ -10,8 +10,8 @@ gi.require_version("Adw", "1")
 gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk  # noqa: E402
 
-from helpme.ask import format_usage  # noqa: E402
-from helpme.markdown import render  # noqa: E402
+from helpbuddy.ask import format_usage  # noqa: E402
+from helpbuddy.markdown import render  # noqa: E402
 
 STATUS_TEXT = {
     "thinking": "Thinking…",
@@ -68,10 +68,10 @@ def _button(icon: str, tooltip: str, action: str | None = None) -> Gtk.Button:
 
 class HelpWindow(Adw.ApplicationWindow):
     def __init__(self, app):
-        super().__init__(application=app, title="Help Me", default_width=460,
+        super().__init__(application=app, title="Help Buddy", default_width=460,
                          default_height=720)
         self.app = app
-        self.add_css_class("helpme")
+        self.add_css_class("helpbuddy")
         self.current_id = None
         self._shown_image = None  # avoid re-decoding the screenshot on every refresh
         self._rows: dict[str, Gtk.ListBoxRow] = {}

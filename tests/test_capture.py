@@ -1,8 +1,8 @@
 import os
 from datetime import datetime
 
-from helpme.capture import area_to_pixels, backend_for, screenshot_filename
-from helpme.config import Settings
+from helpbuddy.capture import area_to_pixels, backend_for, screenshot_filename
+from helpbuddy.config import Settings
 from tests.helpers import XdgTestCase
 
 
@@ -74,7 +74,7 @@ class QueueRobustnessTest(XdgTestCase):
     def test_queue_survives_unexpected_error(self):
         from unittest import mock
         from gi.repository import GLib
-        from helpme import capture
+        from helpbuddy import capture
 
         def boom(_n):
             raise GLib.Error("pipewire exploded")
@@ -89,7 +89,7 @@ class QueueRobustnessTest(XdgTestCase):
 
     def test_queue_survives_processing_error(self):
         from unittest import mock
-        from helpme import capture
+        from helpbuddy import capture
         src = os.path.join(self.root, "portal.png")
 
         def fake_grab(_n):
@@ -106,7 +106,7 @@ class QueueRobustnessTest(XdgTestCase):
     def test_callback_error_does_not_block_queue(self):
         from unittest import mock
         from gi.repository import GLib
-        from helpme import capture
+        from helpbuddy import capture
         loop = GLib.MainLoop()
         calls = []
 
@@ -129,20 +129,20 @@ class QueueRobustnessTest(XdgTestCase):
 
 class PortalAppIdTest(XdgTestCase):
     def test_portal_app_id_parsing(self):
-        from helpme.capture import portal_app_id
+        from helpbuddy.capture import portal_app_id
         base = "0::/user.slice/user-1000.slice/user@1000.service/app.slice/"
-        self.assertEqual(portal_app_id(base + "app-gnome-local.claude.HelpMe-240067.scope"),
-                         "local.claude.HelpMe")
-        self.assertEqual(portal_app_id(base + "app-gnome-helpme-1234.scope"), "")
+        self.assertEqual(portal_app_id(base + "app-gnome-local.claude.HelpBuddy-240067.scope"),
+                         "local.claude.HelpBuddy")
+        self.assertEqual(portal_app_id(base + "app-gnome-helpbuddy-1234.scope"), "")
         self.assertEqual(portal_app_id(base + "ptyxis-spawn-c8a86bce-be53.scope"), "")
-        self.assertEqual(portal_app_id(base + "app-gnome-local.claude.HelpMe-autostart.service"),
-                         "local.claude.HelpMe")
+        self.assertEqual(portal_app_id(base + "app-gnome-local.claude.HelpBuddy-autostart.service"),
+                         "local.claude.HelpBuddy")
         self.assertEqual(portal_app_id(base + "app-gnome-org.foo\\x2dbar.App@abc.service"),
                          "org.foo-bar.App")
         self.assertEqual(portal_app_id(""), "")
 
     def test_token_path_per_app_id(self):
-        from helpme.capture import token_path
+        from helpbuddy.capture import token_path
         self.assertEqual(os.path.basename(token_path("")), "screencast_token")
-        self.assertEqual(os.path.basename(token_path("local.claude.HelpMe")),
-                         "screencast_token.local.claude.HelpMe")
+        self.assertEqual(os.path.basename(token_path("local.claude.HelpBuddy")),
+                         "screencast_token.local.claude.HelpBuddy")

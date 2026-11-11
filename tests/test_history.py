@@ -2,8 +2,8 @@ import json
 import os
 import time
 
-from helpme import config
-from helpme.history import INTERRUPTED, History, cleanup_screenshots
+from helpbuddy import config
+from helpbuddy.history import INTERRUPTED, History, cleanup_screenshots
 from tests.helpers import XdgTestCase
 
 

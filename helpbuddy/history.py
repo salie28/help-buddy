@@ -8,7 +8,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from helpme import config
+from helpbuddy import config
 
 INTERRUPTED = "Interrupted (the app was closed while this was running)"
 STATUSES = ("thinking", "retrying", "done", "failed", "cancelled")

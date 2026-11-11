@@ -7,27 +7,27 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gio, Gtk  # noqa: E402
 
-from helpme.config import APP_ID  # noqa: E402
+from helpbuddy.config import APP_ID  # noqa: E402
 
-KEYBINDING_PATH = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/helpme/"
+KEYBINDING_PATH = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/helpbuddy/"
 MEDIA_KEYS = "org.gnome.settings-daemon.plugins.media-keys"
 CUSTOM_KEY = "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding"
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REPO_BIN = os.path.join(REPO_ROOT, "bin", "helpme")
+REPO_BIN = os.path.join(REPO_ROOT, "bin", "helpbuddy")
 
 
 def user_bin() -> str:
-    return os.path.join(os.path.expanduser("~"), ".local", "bin", "helpme")
+    return os.path.join(os.path.expanduser("~"), ".local", "bin", "helpbuddy")
 
 
-def helpme_path() -> str:
-    """Absolute path of the helpme command (GNOME shortcuts don't get ~/.local/bin on PATH)."""
+def helpbuddy_path() -> str:
+    """Absolute path of the helpbuddy command (GNOME shortcuts don't get ~/.local/bin on PATH)."""
     link = user_bin()
     return link if os.path.exists(link) else REPO_BIN
 
 
 def shortcut_command() -> str:
-    return f"{shlex.quote(helpme_path())} capture"
+    return f"{shlex.quote(helpbuddy_path())} capture"
 
 
 def with_keybinding(paths: list[str]) -> list[str]:
@@ -83,7 +83,7 @@ def set_shortcut(accel: str) -> None:
     if not valid_accel(accel):
         raise ValueError(f"Not a valid shortcut: {accel!r}")
     custom = Gio.Settings.new_with_path(CUSTOM_KEY, KEYBINDING_PATH)
-    custom.set_string("name", "Help Me")
+    custom.set_string("name", "Help Buddy")
     custom.set_string("command", shortcut_command())
     custom.set_string("binding", accel)
     keys = Gio.Settings.new(MEDIA_KEYS)
@@ -92,7 +92,7 @@ def set_shortcut(accel: str) -> None:
 
 
 def ensure_shortcut(accel: str) -> bool:
-    """If Help Me is installed (our path is registered) but the binding was lost, e.g. the
+    """If Help Buddy is installed (our path is registered) but the binding was lost, e.g. the
     app died while recording a new key, put it back. Returns True if it fixed something."""
     keys = Gio.Settings.new(MEDIA_KEYS)
     if KEYBINDING_PATH not in keys.get_strv("custom-keybindings"):
@@ -128,9 +128,9 @@ def autostart_path() -> str:
 def autostart_desktop() -> str:
     return ("[Desktop Entry]\n"
             "Type=Application\n"
-            "Name=Help Me\n"
+            "Name=Help Buddy\n"
             "Comment=Screenshot help key (runs in the background)\n"
-            f"Exec={shlex.quote(helpme_path())} --background\n"
+            f"Exec={shlex.quote(helpbuddy_path())} --background\n"
             "Icon=help-browser-symbolic\n"
             "NoDisplay=true\n"
             "X-GNOME-Autostart-enabled=true\n")
@@ -180,9 +180,9 @@ def desktop_path() -> str:
 def desktop_entry() -> str:
     return ("[Desktop Entry]\n"
             "Type=Application\n"
-            "Name=Help Me\n"
+            "Name=Help Buddy\n"
             "Comment=Screenshot your screen and ask Claude for help\n"
-            f"Exec={shlex.quote(helpme_path())}\n"
+            f"Exec={shlex.quote(helpbuddy_path())}\n"
             "Icon=help-browser-symbolic\n"
             "Terminal=false\n"
             "Categories=Utility;\n"
@@ -215,7 +215,7 @@ def set_bms_whitelist(on: bool) -> bool:
 
 
 def install() -> None:
-    from helpme.config import load_settings
+    from helpbuddy.config import load_settings
     link = user_bin()
     os.makedirs(os.path.dirname(link), exist_ok=True)
     if os.path.lexists(link) and not link_is_ours(link):
@@ -242,7 +242,7 @@ def install() -> None:
 
 
 def uninstall() -> None:
-    from helpme import config
+    from helpbuddy import config
     link = user_bin()
     if link_is_ours(link):
         os.remove(link)
@@ -260,10 +260,10 @@ def uninstall() -> None:
 
 
 def purge_data() -> list[str]:
-    """Delete Help Me's own data (settings, history, log, saved Claude sessions).
+    """Delete Help Buddy's own data (settings, history, log, saved Claude sessions).
     Screenshots are never touched. Returns the removed paths."""
     import shutil
-    from helpme import ask, config
+    from helpbuddy import ask, config
     removed = []
     for path in (config.config_dir(), config.data_dir(),
                  os.path.dirname(ask.session_file("x")), config.state_dir()):

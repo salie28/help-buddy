@@ -1,13 +1,14 @@
-"""Paths, settings and logging for Help Me."""
+"""Paths, settings and logging for Help Buddy."""
 
 import dataclasses
 import json
 import logging
 import logging.handlers
 import os
+import re
 from dataclasses import dataclass
 
-APP_ID = "local.claude.HelpMe"
+APP_ID = "local.claude.HelpBuddy"
 MODELS = ("sonnet", "haiku", "opus")
 CAPTURE_MODES = ("full", "area")
 DEFAULT_PROMPT = ("Look at this screenshot, work out what I'm doing and what I probably "
@@ -19,15 +20,15 @@ def _xdg(var: str, fallback: str) -> str:
 
 
 def config_dir() -> str:
-    return os.path.join(_xdg("XDG_CONFIG_HOME", ".config"), "helpme")
+    return os.path.join(_xdg("XDG_CONFIG_HOME", ".config"), "helpbuddy")
 
 
 def data_dir() -> str:
-    return os.path.join(_xdg("XDG_DATA_HOME", ".local/share"), "helpme")
+    return os.path.join(_xdg("XDG_DATA_HOME", ".local/share"), "helpbuddy")
 
 
 def state_dir() -> str:
-    return os.path.join(_xdg("XDG_STATE_HOME", ".local/state"), "helpme")
+    return os.path.join(_xdg("XDG_STATE_HOME", ".local/state"), "helpbuddy")
 
 
 def settings_path() -> str:
@@ -39,7 +40,7 @@ def history_path() -> str:
 
 
 def log_path() -> str:
-    return os.path.join(state_dir(), "helpme.log")
+    return os.path.join(state_dir(), "helpbuddy.log")
 
 
 def screencast_token_path() -> str:
@@ -57,6 +58,12 @@ def work_dir() -> str:
     return path
 
 
+def claude_project_dir(work_path: str) -> str:
+    """Claude Code's project folder for a working directory (where sessions are saved)."""
+    base = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
+    return os.path.join(base, "projects", re.sub(r"[^A-Za-z0-9]", "-", work_path))
+
+
 def default_screenshot_dir() -> str:
     pictures = None
     try:
@@ -66,7 +73,7 @@ def default_screenshot_dir() -> str:
         pass
     if not pictures:
         pictures = os.path.join(os.path.expanduser("~"), "Pictures")
-    return os.path.join(pictures, "Screenshots", "HelpMe")
+    return os.path.join(pictures, "Screenshots", "HelpBuddy")
 
 
 @dataclass
@@ -122,7 +129,7 @@ def glass_css(glass: int) -> str:
     """Window tint for the given darkness (percent); the blur comes from Blur My Shell."""
     top = glass / 100
     bottom = min(1.0, top + 0.06)
-    return ("window.helpme .glass { background-image: linear-gradient(to bottom, "
+    return ("window.helpbuddy .glass { background-image: linear-gradient(to bottom, "
             f"rgba(30, 30, 30, {top:.2f}), rgba(12, 12, 12, {bottom:.2f})); }}")
 
 
@@ -158,7 +165,7 @@ def save_settings(s: Settings, path: str | None = None) -> None:
 
 
 def setup_logging() -> None:
-    log = logging.getLogger("helpme")
+    log = logging.getLogger("helpbuddy")
     if log.handlers:
         return
     os.makedirs(state_dir(), exist_ok=True)

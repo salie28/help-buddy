@@ -1,6 +1,6 @@
 import unittest
 
-from helpme.config import should_show_window
+from helpbuddy.config import should_show_window
 
 
 class ShowWindowRuleTest(unittest.TestCase):

@@ -1,5 +1,7 @@
 # Help Me — design
 
+> Note (2026-11-11): the app was renamed from "Help Me" to **Help Buddy** (`helpbuddy`, `local.claude.HelpBuddy`) for v1.0.0. This document keeps the original names.
+
 Date: 2026-11-10 · Status: draft for review
 
 ## Purpose

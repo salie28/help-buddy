@@ -13,14 +13,14 @@ gi.require_version("GdkPixbuf", "2.0")
 gi.require_version("Gst", "1.0")
 from gi.repository import GdkPixbuf, Gio, GLib, Gst  # noqa: E402
 
-from helpme import config  # noqa: E402
+from helpbuddy import config  # noqa: E402
 
 MIN_SIDE = 16
 PORTAL_TIMEOUT_S = 30
 SHARE_DIALOG_TIMEOUT_S = 180  # first no-flash capture waits for the "Share screen" dialog
 PORTAL = "org.freedesktop.portal.Desktop"
 PORTAL_PATH = "/org/freedesktop/portal/desktop"
-log = logging.getLogger("helpme")
+log = logging.getLogger("helpbuddy")
 
 
 def backend_for(settings) -> str:
@@ -146,7 +146,7 @@ class Capturer:
             done(None, f"No session bus: {e.message}")
             return
         self._counter += 1
-        token = f"helpme{os.getpid()}_{self._counter}"
+        token = f"helpbuddy{os.getpid()}_{self._counter}"
         sender = bus.get_unique_name()[1:].replace(".", "_")
         req_path = f"/org/freedesktop/portal/desktop/request/{sender}/{token}"
         state = {"sub": 0, "timer": 0, "done": False}
@@ -216,7 +216,7 @@ def _grab_screencast_frame(n: int) -> str:
 
         def request(method, fmt, args, opts, timeout):
             seq[0] += 1
-            token = f"helpmecast{os.getpid()}_{n}_{seq[0]}"
+            token = f"helpbuddycast{os.getpid()}_{n}_{seq[0]}"
             opts["handle_token"] = GLib.Variant("s", token)
             path = f"/org/freedesktop/portal/desktop/request/{sender}/{token}"
             loop = GLib.MainLoop.new(ctx, False)
@@ -255,7 +255,7 @@ def _grab_screencast_frame(n: int) -> str:
             return res["results"]
 
         r = request("CreateSession", "(a{sv})", (),
-                    {"session_handle_token": GLib.Variant("s", f"helpmes{os.getpid()}_{n}")},
+                    {"session_handle_token": GLib.Variant("s", f"helpbuddys{os.getpid()}_{n}")},
                     PORTAL_TIMEOUT_S)
         session = r["session_handle"]
         opts = {"types": GLib.Variant("u", 1),          # monitor

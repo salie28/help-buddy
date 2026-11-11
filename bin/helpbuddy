@@ -1,10 +1,10 @@
 #!/usr/bin/python3
-"""Help Me launcher. Works when symlinked (e.g. ~/.local/bin/helpme)."""
+"""Help Buddy launcher. Works when symlinked (e.g. ~/.local/bin/helpbuddy)."""
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from helpme.app import main  # noqa: E402
+from helpbuddy.app import main  # noqa: E402
 
 sys.exit(main(sys.argv))

@@ -1,100 +1,100 @@
-/* Help Me: dark frosted glass (same recipe as the launcher). Blur comes from Blur My Shell. */
+/* Help Buddy: dark frosted glass (same recipe as the launcher). Blur comes from Blur My Shell. */
 
-window.helpme,
-window.helpme.background {
+window.helpbuddy,
+window.helpbuddy.background {
   background: none;
   background-color: transparent;
   border-radius: 15px;
 }
 
-window.helpme .glass {
+window.helpbuddy .glass {
   background-color: transparent;
   /* gradient comes from config.glass_css() (Settings → Window darkness) */
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 15px;
 }
 
-window.helpme headerbar,
-window.helpme toolbarview,
-window.helpme navigation-view,
-window.helpme navigation-view > *,
-window.helpme scrolledwindow,
-window.helpme statuspage {
+window.helpbuddy headerbar,
+window.helpbuddy toolbarview,
+window.helpbuddy navigation-view,
+window.helpbuddy navigation-view > *,
+window.helpbuddy scrolledwindow,
+window.helpbuddy statuspage {
   background: none;
   background-color: transparent;
   box-shadow: none;
 }
 
-window.helpme label {
+window.helpbuddy label {
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
-window.helpme .dim-label {
+window.helpbuddy .dim-label {
   opacity: 0.7;
 }
 
 /* library */
-window.helpme list.library {
+window.helpbuddy list.library {
   background: none;
   padding: 4px 8px 12px 8px;
 }
 
-window.helpme list.library > row {
+window.helpbuddy list.library > row {
   background-color: rgba(255, 255, 255, 0.04);
   border-radius: 10px;
   margin: 3px 0;
 }
 
-window.helpme list.library > row:hover {
+window.helpbuddy list.library > row:hover {
   background-color: rgba(255, 255, 255, 0.08);
 }
 
-window.helpme list.library > row:active {
+window.helpbuddy list.library > row:active {
   background-color: rgba(255, 255, 255, 0.14);
 }
 
-window.helpme .thumb {
+window.helpbuddy .thumb {
   border-radius: 6px;
 }
 
-window.helpme .dot {
+window.helpbuddy .dot {
   min-width: 8px;
   min-height: 8px;
   border-radius: 4px;
   margin: 0 4px;
 }
 
-window.helpme .dot.thinking,
-window.helpme .dot.retrying {
+window.helpbuddy .dot.thinking,
+window.helpbuddy .dot.retrying {
   background-color: #f5c211;
 }
 
-window.helpme .dot.failed,
-window.helpme .dot.cancelled {
+window.helpbuddy .dot.failed,
+window.helpbuddy .dot.cancelled {
   background-color: #e66100;
 }
 
-window.helpme .dot.done {
+window.helpbuddy .dot.done {
   background-color: #2ec27e;
 }
 
 /* answer page */
-window.helpme .shot {
+window.helpbuddy .shot {
   border-radius: 10px;
 }
 
-window.helpme .answer-text.heading {
+window.helpbuddy .answer-text.heading {
   margin-top: 4px;
 }
 
-window.helpme .code {
+window.helpbuddy .code {
   background-color: rgba(0, 0, 0, 0.30);
   border-radius: 8px;
   padding: 8px 10px;
 }
 
-window.helpme .code button.code-copy {
+window.helpbuddy .code button.code-copy {
   min-width: 28px;
   min-height: 28px;
   padding: 0;
@@ -102,30 +102,30 @@ window.helpme .code button.code-copy {
   opacity: 0.55;
 }
 
-window.helpme .code button.code-copy:hover {
+window.helpbuddy .code button.code-copy:hover {
   opacity: 1;
 }
 
-window.helpme .code label {
+window.helpbuddy .code label {
   font-family: monospace;
   text-shadow: none;
 }
 
-window.helpme .error-text {
+window.helpbuddy .error-text {
   color: #ffbe6f;
 }
 
-window.helpme button.pill-ish {
+window.helpbuddy button.pill-ish {
   background-color: rgba(255, 255, 255, 0.08);
   border-radius: 9px;
   padding: 4px 12px;
 }
 
-window.helpme button.pill-ish:hover {
+window.helpbuddy button.pill-ish:hover {
   background-color: rgba(255, 255, 255, 0.14);
 }
 
-window.helpme button.pill-ish.destructive label {
+window.helpbuddy button.pill-ish.destructive label {
   color: #ff938c;
 }
 
@@ -142,7 +142,7 @@ window.area-picker .picker-hint {
 }
 
 /* follow-ups */
-window.helpme label.you {
+window.helpbuddy label.you {
   background-color: rgba(255, 255, 255, 0.10);
   border-radius: 10px;
   padding: 8px 12px;
@@ -150,7 +150,7 @@ window.helpme label.you {
   font-weight: bold;
 }
 
-window.helpme .ask-bar entry {
+window.helpbuddy .ask-bar entry {
   background-color: rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   min-height: 34px;

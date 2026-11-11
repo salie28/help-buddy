@@ -7,8 +7,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from helpme import config, system  # noqa: E402
-from helpme.window import pixbuf_texture  # noqa: E402
+from helpbuddy import config, system  # noqa: E402
+from helpbuddy.window import pixbuf_texture  # noqa: E402
 
 MODEL_LABELS = ["Sonnet", "Haiku", "Opus"]
 
@@ -107,7 +107,7 @@ class SettingsDialog(Adw.PreferencesDialog):
         win.add(jump)
         auto = Adw.SwitchRow(title="Start in background at login",
                              subtitle="The key works right away; the window opens only when "
-                                      "you open Help Me.",
+                                      "you open Help Buddy.",
                              active=s.autostart)
         auto.connect("notify::active", self._on_autostart)
         win.add(auto)

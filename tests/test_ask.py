@@ -10,8 +10,8 @@ import gi
 gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import GdkPixbuf, GLib
 
-from helpme import ask
-from helpme.ask import (Result, build_command, build_payload, find_claude, parse_output,
+from helpbuddy import ask
+from helpbuddy.ask import (Result, build_command, build_payload, find_claude, parse_output,
                         prepare_image, retry_delay)
 from tests.helpers import XdgTestCase
 
@@ -177,7 +177,7 @@ class FindClaudeTest(XdgTestCase):
 
 class FollowupPromptTest(XdgTestCase):
     def test_followup_prompt_has_whole_conversation(self):
-        from helpme.ask import followup_prompt
+        from helpbuddy.ask import followup_prompt
         text = followup_prompt("help me", "Use INSTR.", [("and SUBSTR?", "SUBSTR cuts.")],
                                "show an example")
         for part in ("help me", "Use INSTR.", "and SUBSTR?", "SUBSTR cuts.", "show an example"):

@@ -5,7 +5,7 @@ import gi
 gi.require_version("Pango", "1.0")
 from gi.repository import Pango
 
-from helpme.markdown import render
+from helpbuddy.markdown import render
 
 
 def plain(markup):

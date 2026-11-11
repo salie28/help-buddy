@@ -1,4 +1,4 @@
-"""Help Me application: single instance, `helpme capture` from the global shortcut."""
+"""Help Buddy application: single instance, `helpbuddy capture` from the global shortcut."""
 
 import logging
 import os
@@ -10,17 +10,17 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from helpme import config  # noqa: E402
-from helpme.ask import Asker  # noqa: E402
-from helpme.capture import Capturer  # noqa: E402
-from helpme.config import APP_ID, load_settings  # noqa: E402
-from helpme.history import History, cleanup_screenshots  # noqa: E402
+from helpbuddy import config  # noqa: E402
+from helpbuddy.ask import Asker  # noqa: E402
+from helpbuddy.capture import Capturer  # noqa: E402
+from helpbuddy.config import APP_ID, load_settings  # noqa: E402
+from helpbuddy.history import History, cleanup_screenshots  # noqa: E402
 
-log = logging.getLogger("helpme")
+log = logging.getLogger("helpbuddy")
 STYLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "style.css")
 
 
-class HelpMeApp(Adw.Application):
+class HelpBuddyApp(Adw.Application):
     def __init__(self):
         super().__init__(application_id=APP_ID,
                          flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
@@ -35,16 +35,16 @@ class HelpMeApp(Adw.Application):
     def do_startup(self):
         Adw.Application.do_startup(self)
         self.hold()  # keep running with the window hidden
-        GLib.set_application_name("Help Me")
+        GLib.set_application_name("Help Buddy")
         config.setup_logging()
         self.settings = load_settings()
         self.history = History()
         self.history.load()
         cleanup_screenshots(self.settings.screenshot_dir, self.settings.keep_days, time.time())
-        from helpme.ask import cleanup_sessions
+        from helpbuddy.ask import cleanup_sessions
         cleanup_sessions(self.settings.keep_days, time.time())
         try:
-            from helpme import system
+            from helpbuddy import system
             if system.ensure_shortcut(self.settings.shortcut):
                 log.warning("help key binding was missing; restored %s", self.settings.shortcut)
         except (ValueError, GLib.Error) as e:
@@ -65,7 +65,7 @@ class HelpMeApp(Adw.Application):
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", handler)
             self.add_action(action)
-        log.info("Help Me started")
+        log.info("Help Buddy started")
 
     def do_command_line(self, command_line):
         args = command_line.get_arguments()[1:]
@@ -86,12 +86,12 @@ class HelpMeApp(Adw.Application):
 
     def ensure_window(self):
         if self.window is None:
-            from helpme.window import HelpWindow
+            from helpbuddy.window import HelpWindow
             self.window = HelpWindow(self)
         return self.window
 
     def shortcut_label(self) -> str:
-        from helpme.system import pretty_accel
+        from helpbuddy.system import pretty_accel
         return pretty_accel(self.settings.shortcut)
 
     # ---- requests ----
@@ -153,7 +153,7 @@ class HelpMeApp(Adw.Application):
                                 error="The screenshot for this request is gone, so it can't "
                                       "be sent again.")
         else:
-            from helpme.ask import delete_session
+            from helpbuddy.ask import delete_session
             delete_session(req.session)
             self.history.update(req_id, status="thinking", error="", attempts=0, session="",
                                 usage={})
@@ -179,7 +179,7 @@ class HelpMeApp(Adw.Application):
         self._ask_followup(req_id, i)
 
     def _ask_followup(self, req_id, i):
-        from helpme.ask import followup_prompt, session_file
+        from helpbuddy.ask import followup_prompt, session_file
         req = self.history.get(req_id)
         if req.session and os.path.exists(session_file(req.session)):
             # Same conversation: claude resumes the saved session (screenshot not resent).
@@ -240,7 +240,7 @@ class HelpMeApp(Adw.Application):
         self._refresh(req_id)
 
     def _cancel_all(self, req):
-        from helpme.ask import delete_session
+        from helpbuddy.ask import delete_session
         self.asker.cancel(req.id)
         for i in range(len(req.followups)):
             self.asker.cancel(f"{req.id}:{i}")
@@ -273,7 +273,7 @@ class HelpMeApp(Adw.Application):
             self.window.reload()
 
     def open_settings(self):
-        from helpme.settings_ui import SettingsDialog
+        from helpbuddy.settings_ui import SettingsDialog
         win = self.ensure_window()
         if not win.get_visible():
             win.present()
@@ -287,11 +287,11 @@ class HelpMeApp(Adw.Application):
 def main(argv) -> int:
     args = argv[1:]
     if "--version" in args:
-        from helpme import __version__
-        print(f"Help Me {__version__}")
+        from helpbuddy import __version__
+        print(f"Help Buddy {__version__}")
         return 0
     if "--install" in args or "--uninstall" in args:
-        from helpme import system
+        from helpbuddy import system
         if "--install" in args:
             system.install()
         else:
@@ -300,7 +300,7 @@ def main(argv) -> int:
                 for path in system.purge_data():
                     print(f"purged {path}")
         return 0
-    return HelpMeApp().run(argv)
+    return HelpBuddyApp().run(argv)
 
 
 if __name__ == "__main__":

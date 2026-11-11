@@ -13,7 +13,7 @@ import gi
 gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import GdkPixbuf, Gio, GLib  # noqa: E402
 
-from helpme import config  # noqa: E402
+from helpbuddy import config  # noqa: E402
 
 SYSTEM_PROMPT = ("The user pressed a 'help me' key and sent a screenshot of their screen. "
                  "Help with what they are most likely stuck on. Be concise and practical. "
@@ -28,7 +28,7 @@ MAX_ATTEMPTS = 2
 MAX_IMAGE_BYTES = 3_500_000
 MAX_LONG_EDGE = 1920
 
-log = logging.getLogger("helpme")
+log = logging.getLogger("helpbuddy")
 
 
 @dataclass
@@ -72,11 +72,10 @@ def build_text_payload(prompt: str) -> bytes:
 
 
 def session_file(session_id: str) -> str:
-    """Where claude keeps a saved session: its own project folder for Help Me's work dir,
+    """Where claude keeps a saved session: its own project folder for Help Buddy's work dir,
     so these never show up in the user's normal /resume lists."""
-    base = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
-    project = re.sub(r"[^A-Za-z0-9]", "-", config.work_dir_path())
-    return os.path.join(base, "projects", project, f"{session_id}.jsonl")
+    return os.path.join(config.claude_project_dir(config.work_dir_path()),
+                        f"{session_id}.jsonl")
 
 
 def delete_session(session_id: str) -> None:

@@ -1,6 +1,6 @@
 <div align="center">
 
-# Help Me
+# Help Buddy
 
 **Press one key, get help with whatever is on your screen.**
 
@@ -35,7 +35,7 @@ frosted-glass window you keep on another desktop. It never steals your focus.
 ## Features
 
 - **One global key.** The default is <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd>, and you can record any combination in Settings.
-- **Silent capture.** By default there is no screen flash: Help Me grabs one frame through the ScreenCast portal. A classic flash screenshot is a toggle away.
+- **Silent capture.** By default there is no screen flash: Help Buddy grabs one frame through the ScreenCast portal. A classic flash screenshot is a toggle away.
 - **Whole screen or a preset area.** Drag a box once, and every press sends just that part.
 - **Claude Sonnet 5.5** with full thinking. It runs through the `claude` CLI, so it uses your Claude subscription and needs no API key.
 - **Never steals focus.**
@@ -56,25 +56,25 @@ frosted-glass window you keep on another desktop. It never steals your focus.
 ## How it works
 
 ```
-  key press ──► gsd-media-keys ──► helpme capture ──► running Help Me instance (D-Bus)
+  key press ──► gsd-media-keys ──► helpbuddy capture ──► running Help Buddy instance (D-Bus)
                                                             │
              ScreenCast portal + PipeWire (1 frame) ◄───────┤  (Screenshot portal if "flash")
                                                             │
              crop to preset area, save PNG ─────────────────┤
                                                             │
              claude -p --model sonnet --effort high ◄───────┤  stream-json, no tools,
-             (saved session in Help Me's own folder)        │  isolated settings
+             (saved session in Help Buddy's own folder)        │  isolated settings
                                                             ▼
                                           frosted Help window (GTK 4 / libadwaita)
 ```
 
-- **Single instance:** a `Gio.Application`. Every later `helpme capture` is forwarded to the running app.
+- **Single instance:** a `Gio.Application`. Every later `helpbuddy capture` is forwarded to the running app.
 - **Capture runs one at a time.** Decoding, cropping and saving happen off the UI thread.
 - **Claude calls run through `Gio.Subprocess`:**
   - no tools
   - your user settings, hooks and plugins are not loaded
   - the working folder is an empty one
-- **Follow-ups resume the saved session.** It lives in Help Me's own Claude project folder, so it never shows up in your normal `/resume` list.
+- **Follow-ups resume the saved session.** It lives in Help Buddy's own Claude project folder, so it never shows up in your normal `/resume` list.
 
 ## Requirements
 
@@ -86,18 +86,18 @@ frosted-glass window you keep on another desktop. It never steals your focus.
 ## Install
 
 ```bash
-git clone https://github.com/salie28/helpme.git ~/helpme
-cd ~/helpme
+git clone https://github.com/salie28/help-buddy.git ~/help-buddy
+cd ~/help-buddy
 ./install.sh
 ```
 
 The installer:
 1. checks packages, the Python bindings and the `claude` CLI
 2. runs the test suite
-3. links `~/.local/bin/helpme`
-4. adds a "Help Me" app entry and the global shortcut
+3. links `~/.local/bin/helpbuddy`
+4. adds a "Help Buddy" app entry and the global shortcut
 5. whitelists the window in Blur My Shell
-6. starts Help Me in the background
+6. starts Help Buddy in the background
 
 The first silent capture asks **once** which screen to share. Pick yours and allow it.
 
@@ -112,7 +112,7 @@ The first silent capture asks **once** which screen to share. Pick yours and all
 | Back arrow (top left) | Opens the Library of all requests. |
 | Copy icon on a code block | Copies exactly that code. |
 | Close (×) | Hides the window. The key keeps working in the background. |
-| "Help Me" in the app grid or launcher | Shows the window again. |
+| "Help Buddy" in the app grid or launcher | Shows the window again. |
 
 ## Settings
 
@@ -129,7 +129,7 @@ Open them with the gear icon in the window.
 | Window darkness | 75 % |
 | Jump to newest request | On |
 | Start in background at login | Off |
-| Screenshot folder | `<Pictures>/Screenshots/HelpMe` |
+| Screenshot folder | `<Pictures>/Screenshots/HelpBuddy` |
 | Delete screenshots after N days (0 = keep) | 30 |
 
 ## Privacy and data
@@ -139,11 +139,11 @@ Open them with the gear icon in the window.
 
 | What | Where |
 |---|---|
-| Settings | `~/.config/helpme/settings.json` |
-| History | `~/.local/share/helpme/history.json` |
-| Log | `~/.local/state/helpme/helpme.log` |
-| Screen-share restore token | `~/.local/state/helpme/screencast_token*` |
-| Saved conversations | `~/.claude/projects/-home-<you>--local-state-helpme-work/` |
+| Settings | `~/.config/helpbuddy/settings.json` |
+| History | `~/.local/share/helpbuddy/history.json` |
+| Log | `~/.local/state/helpbuddy/helpbuddy.log` |
+| Screen-share restore token | `~/.local/state/helpbuddy/screencast_token*` |
+| Saved conversations | `~/.claude/projects/-home-<you>--local-state-helpbuddy-work/` |
 | Screenshots | your screenshot folder |
 
 - **Deleting** a request removes its screenshot and its saved conversation.
@@ -154,9 +154,9 @@ Open them with the gear icon in the window.
 - **The "Share screen" dialog appears again.** The permission is stored per launch path, so it can come up once for the shortcut and once for the app grid.
 - **Video in the screenshot is black.** DRM-protected video can't be captured.
 - **Nothing happens at all.** Check these:
-  - `~/.local/state/helpme/helpme.log`
-  - `pgrep -a helpme`
-  - `gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings`, which should list `.../helpme/`
+  - `~/.local/state/helpbuddy/helpbuddy.log`
+  - `pgrep -a helpbuddy`
+  - `gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings`, which should list `.../helpbuddy/`
 
 ## Uninstall
 
@@ -170,21 +170,21 @@ Screenshots are never deleted.
 ## Development
 
 ```
-bin/helpme            launcher (works through the ~/.local/bin symlink)
-helpme/app.py         single-instance app, capture → ask → window wiring
-helpme/capture.py     ScreenCast / Screenshot portal, crop, save
-helpme/ask.py         claude CLI call, retry, sessions, usage
-helpme/window.py      answer page, follow-ups, library
-helpme/settings_ui.py settings page, key recorder, area picker
-helpme/system.py      shortcut, autostart, install / uninstall
-helpme/markdown.py    Markdown → Pango markup
+bin/helpbuddy            launcher (works through the ~/.local/bin symlink)
+helpbuddy/app.py         single-instance app, capture → ask → window wiring
+helpbuddy/capture.py     ScreenCast / Screenshot portal, crop, save
+helpbuddy/ask.py         claude CLI call, retry, sessions, usage
+helpbuddy/window.py      answer page, follow-ups, library
+helpbuddy/settings_ui.py settings page, key recorder, area picker
+helpbuddy/system.py      shortcut, autostart, install / uninstall
+helpbuddy/markdown.py    Markdown → Pango markup
 tests/                unittest suite (no extra packages)
 docs/superpowers/     design spec and implementation plan
 ```
 
 ```bash
 python3 -m unittest discover -s tests     # 92 tests, ~2 s
-./bin/helpme --version
+./bin/helpbuddy --version
 ```
 
 ## Roadmap
