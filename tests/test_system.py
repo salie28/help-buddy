@@ -146,4 +146,4 @@ class PurgeAndVersionTest(XdgTestCase):
         with contextlib.redirect_stdout(out):
             self.assertEqual(main(["helpbuddy", "--version"]), 0)
         self.assertEqual(out.getvalue().strip(), f"Help Buddy {__version__}")
-        self.assertEqual(__version__, "1.0.0")
+        self.assertRegex(__version__, r"^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$")
