@@ -115,3 +115,35 @@ class KeyRecorderTest(XdgTestCase):
         self.assertIn("Super", label)
         self.assertTrue(label.endswith("H"))
         self.assertEqual(system.pretty_accel("garbage<"), "garbage<")
+
+
+class PurgeAndVersionTest(XdgTestCase):
+    def test_purge_data_removes_app_data_only(self):
+        from helpme import ask, config
+        shots = os.path.join(self.root, "Pictures", "Screenshots", "HelpMe")
+        os.makedirs(shots)
+        open(os.path.join(shots, "261111_080000.png"), "w").close()
+        config.save_settings(config.Settings(screenshot_dir=shots))
+        os.makedirs(os.path.dirname(config.history_path()))
+        open(config.history_path(), "w").close()
+        config.work_dir()
+        session = ask.session_file("sid")
+        os.makedirs(os.path.dirname(session))
+        open(session, "w").close()
+        removed = system.purge_data()
+        for path in (config.config_dir(), config.data_dir(), config.state_dir(),
+                     os.path.dirname(session)):
+            self.assertFalse(os.path.exists(path), path)
+            self.assertIn(path, removed)
+        self.assertTrue(os.path.exists(os.path.join(shots, "261111_080000.png")))
+        self.assertEqual(system.purge_data(), [])
+
+    def test_version_flag(self):
+        import contextlib, io
+        from helpme import __version__
+        from helpme.app import main
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(main(["helpme", "--version"]), 0)
+        self.assertEqual(out.getvalue().strip(), f"Help Me {__version__}")
+        self.assertEqual(__version__, "1.0.0")

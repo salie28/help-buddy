@@ -46,9 +46,13 @@ def screencast_token_path() -> str:
     return os.path.join(state_dir(), "screencast_token")
 
 
+def work_dir_path() -> str:
+    return os.path.join(state_dir(), "work")
+
+
 def work_dir() -> str:
-    """Empty folder claude runs in, so no project CLAUDE.md is picked up."""
-    path = os.path.join(state_dir(), "work")
+    """Empty folder claude runs in, so no project CLAUDE.md is picked up (created)."""
+    path = work_dir_path()
     os.makedirs(path, exist_ok=True)
     return path
 

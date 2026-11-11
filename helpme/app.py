@@ -285,9 +285,20 @@ class HelpMeApp(Adw.Application):
 
 
 def main(argv) -> int:
-    if "--install" in argv[1:] or "--uninstall" in argv[1:]:
+    args = argv[1:]
+    if "--version" in args:
+        from helpme import __version__
+        print(f"Help Me {__version__}")
+        return 0
+    if "--install" in args or "--uninstall" in args:
         from helpme import system
-        system.install() if "--install" in argv[1:] else system.uninstall()
+        if "--install" in args:
+            system.install()
+        else:
+            system.uninstall()
+            if "--purge" in args:
+                for path in system.purge_data():
+                    print(f"purged {path}")
         return 0
     return HelpMeApp().run(argv)
 

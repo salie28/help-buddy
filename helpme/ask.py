@@ -75,7 +75,7 @@ def session_file(session_id: str) -> str:
     """Where claude keeps a saved session: its own project folder for Help Me's work dir,
     so these never show up in the user's normal /resume lists."""
     base = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
-    project = re.sub(r"[^A-Za-z0-9]", "-", config.work_dir())
+    project = re.sub(r"[^A-Za-z0-9]", "-", config.work_dir_path())
     return os.path.join(base, "projects", project, f"{session_id}.jsonl")
 
 

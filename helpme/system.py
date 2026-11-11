@@ -257,3 +257,17 @@ def uninstall() -> None:
         print("removed the Blur My Shell whitelist entry")
     print("kept: settings", config.settings_path(), "| history", config.history_path(),
           "| log", config.log_path(), "| screenshots in your screenshot folder")
+
+
+def purge_data() -> list[str]:
+    """Delete Help Me's own data (settings, history, log, saved Claude sessions).
+    Screenshots are never touched. Returns the removed paths."""
+    import shutil
+    from helpme import ask, config
+    removed = []
+    for path in (config.config_dir(), config.data_dir(),
+                 os.path.dirname(ask.session_file("x")), config.state_dir()):
+        if os.path.isdir(path):
+            shutil.rmtree(path, ignore_errors=True)
+            removed.append(path)
+    return removed
