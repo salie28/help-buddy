@@ -75,7 +75,7 @@ class SettingsDialog(Adw.PreferencesDialog):
                       lambda r, _p: self._set("model", config.MODELS[r.get_selected()]))
         ai.add(model)
         length = Adw.ComboRow(title="Answer length",
-                              subtitle="Short ≈ 120 words unless steps or code are needed",
+                              subtitle="Short ≈ 120 words",
                               model=Gtk.StringList.new(["Short", "Detailed"]))
         length.set_selected(1 if s.answer_length == "detailed" else 0)
         length.connect("notify::selected", lambda r, _p: self._set(

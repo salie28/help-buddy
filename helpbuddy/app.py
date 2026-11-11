@@ -59,6 +59,7 @@ class HelpBuddyApp(Adw.Application):
                                                   Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
         self.apply_glass()
         for name, handler in (("capture", lambda *_: self.start_capture()),
+                              ("library", lambda *_: self.ensure_window().show_library()),
                               ("settings", lambda *_: self.open_settings()),
                               ("clear-history", lambda *_: self.confirm_clear_history()),
                               ("quit", lambda *_: self.quit())):

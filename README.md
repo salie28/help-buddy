@@ -14,16 +14,57 @@ frosted-glass window you keep on another desktop. It never steals your focus.
 ![Version](https://img.shields.io/badge/version-1.0.0-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+<img src="docs/images/banner.png" alt="Help Buddy: an answer about a Python error, shown in the frosted Help Buddy window" width="100%">
+
 </div>
+
+## Install
+
+```bash
+git clone https://github.com/salie28/help-buddy.git ~/help-buddy
+cd ~/help-buddy
+./install.sh
+```
+
+Then press <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd> anywhere. The first silent capture asks **once** which screen to share. Pick yours and allow it.
+
+**You need:**
+- **Desktop:** GNOME on Wayland. Built and tested on Fedora 44 with GNOME 50.
+- **Packages:** `python3-gobject`, `gtk4`, `libadwaita`, `gstreamer1-plugins-base`, `gstreamer1-plugins-good`, `pipewire-gstreamer`, `xdg-desktop-portal-gnome`. The installer checks these and offers to install them.
+- **[Claude Code](https://code.claude.com/docs)**, installed and logged in. Run `claude` once.
+- **Optional:** [Blur My Shell](https://extensions.gnome.org/extension/3193/blur-my-shell/) for the frosted blur. Without it the window is simply tinted.
+
+<details>
+<summary>What the installer does</summary>
+
+The installer:
+1. checks packages, the Python bindings and the `claude` CLI
+2. runs the test suite
+3. links `~/.local/bin/helpbuddy`
+4. adds a "Help Buddy" app entry and the global shortcut
+5. whitelists the window in Blur My Shell
+6. starts Help Buddy in the background
+
+</details>
+
+## Screenshots
+
+<table>
+<tr>
+<td align="center" width="33%"><img src="docs/images/answer.png" alt="Answer page with a code block and a follow-up question"><br><b>Answer</b><br><sub>Formatted answer, copy buttons on code, follow-ups at the bottom</sub></td>
+<td align="center" width="33%"><img src="docs/images/library.png" alt="Library of earlier requests with thumbnails"><br><b>Library</b><br><sub>Every request, with screenshot, status and follow-up count</sub></td>
+<td align="center" width="33%"><img src="docs/images/settings.png" alt="Settings page"><br><b>Settings</b><br><sub>Capture area, silent capture, help key, model, answer length</sub></td>
+</tr>
+</table>
 
 ---
 
 ## Contents
 
+- [Install](#install)
+- [Screenshots](#screenshots)
 - [Features](#features)
 - [How it works](#how-it-works)
-- [Requirements](#requirements)
-- [Install](#install)
 - [Updating](#updating)
 - [Usage](#usage)
 - [Settings](#settings)
@@ -77,31 +118,6 @@ frosted-glass window you keep on another desktop. It never steals your focus.
   - your user settings, hooks and plugins are not loaded
   - the working folder is an empty one
 - **Follow-ups resume the saved session.** It lives in Help Buddy's own Claude project folder, so it never shows up in your normal `/resume` list.
-
-## Requirements
-
-- **Desktop:** GNOME on Wayland. Built and tested on Fedora 44 with GNOME 50.
-- **Packages:** `python3-gobject`, `gtk4`, `libadwaita`, `gstreamer1-plugins-base`, `gstreamer1-plugins-good`, `pipewire-gstreamer`, `xdg-desktop-portal-gnome`. The installer checks these and offers to install them.
-- **[Claude Code](https://code.claude.com/docs)**, installed and logged in. Run `claude` once.
-- **Optional:** [Blur My Shell](https://extensions.gnome.org/extension/3193/blur-my-shell/) for the frosted blur. Without it the window is simply tinted.
-
-## Install
-
-```bash
-git clone https://github.com/salie28/help-buddy.git ~/help-buddy
-cd ~/help-buddy
-./install.sh
-```
-
-The installer:
-1. checks packages, the Python bindings and the `claude` CLI
-2. runs the test suite
-3. links `~/.local/bin/helpbuddy`
-4. adds a "Help Buddy" app entry and the global shortcut
-5. whitelists the window in Blur My Shell
-6. starts Help Buddy in the background
-
-The first silent capture asks **once** which screen to share. Pick yours and allow it.
 
 ## Updating
 
