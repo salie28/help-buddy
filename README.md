@@ -12,7 +12,7 @@ frosted-glass window you keep on another desktop. It never steals your focus.
 ![Python](https://img.shields.io/badge/python-3.14-3776ab)
 ![GTK](https://img.shields.io/badge/GTK-4%20%2B%20libadwaita-6ab04c)
 ![Version](https://img.shields.io/badge/version-1.0.0-informational)
-![License](https://img.shields.io/badge/license-private-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 </div>
 
@@ -32,6 +32,7 @@ frosted-glass window you keep on another desktop. It never steals your focus.
 - [Uninstall](#uninstall)
 - [Development](#development)
 - [Roadmap](#roadmap)
+- [License](#license)
 
 ## Features
 
@@ -222,4 +223,6 @@ python3 -m unittest discover -s tests     # 96 tests, ~2 s
 
 ## License
 
-Private project. All rights reserved for now.
+[MIT](LICENSE) © 2026 [salie28](https://github.com/salie28).
+
+You're free to use, change and share Help Buddy, including in your own projects. Just keep the copyright notice (the `LICENSE` file) with it, so it's clear where the code comes from. A link back to [salie28/help-buddy](https://github.com/salie28/help-buddy) is appreciated.
